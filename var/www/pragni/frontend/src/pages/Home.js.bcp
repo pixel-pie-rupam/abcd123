@@ -1,0 +1,1509 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { getCourses, getWorkshops, joinWorkshop } from '../utils/api';
+
+/* ─── CSS INJECTION ──────────────────────────────────────────────────────────── */
+const STYLES = `
+  @import url('https://fonts.googleapis.com/css2?family=Clash+Display:wght@400;500;600;700&family=Cabinet+Grotesk:wght@300;400;500;700;800&family=Outfit:wght@300;400;500;600&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;1,300&display=swap');
+
+  :root {
+    --ink:        #08090f;
+    --ink2:       #0d0f1a;
+    --ink3:       #111420;
+    --ink4:       #161924;
+    --surface:    #1a1d2e;
+    --surface2:   #1f2335;
+    --lift:       #242840;
+    --border:     rgba(255,255,255,0.055);
+    --border2:    rgba(255,255,255,0.10);
+    --border3:    rgba(255,255,255,0.18);
+    --text:       #eef0ff;
+    --text2:      #8b91b8;
+    --text3:      #4a4f72;
+
+    --violet:     #7b5ea7;
+    --violet2:    #9d7fd4;
+    --violet3:    #c4a8ff;
+    --cyan:       #4fc3f7;
+    --cyan2:      #29b6f6;
+    --teal:       #26d0a1;
+    --rose:       #f06292;
+    --amber:      #ffca28;
+    --emerald:    #00e676;
+    --indigo:     #5c6bc0;
+
+    --glow-v:     rgba(123,94,167,0.45);
+    --glow-c:     rgba(79,195,247,0.3);
+    --glow-t:     rgba(38,208,161,0.3);
+
+    --font-display: 'Clash Display', 'Cabinet Grotesk', sans-serif;
+    --font-body:    'Plus Jakarta Sans', 'Outfit', sans-serif;
+    --ease:       cubic-bezier(0.16, 1, 0.3, 1);
+    --ease2:      cubic-bezier(0.4, 0, 0.2, 1);
+    --r:          18px;
+    --r-sm:       10px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  ::selection { background: rgba(157,127,212,0.28); color: #fff; }
+
+  /* ── SCROLLBAR ── */
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: var(--ink2); }
+  ::-webkit-scrollbar-thumb { background: var(--lift); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--violet); }
+
+  /* ── ROOT ── */
+  .ph-root {
+    font-family: var(--font-body);
+    color: var(--text);
+    background: var(--ink);
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  /* ══════════════════════════════════════════
+     AURORA BACKGROUND SYSTEM
+  ══════════════════════════════════════════ */
+  .ph-aurora {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    overflow: hidden;
+  }
+
+  /* Main aurora blobs */
+  .aurora-blob {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(90px);
+    will-change: transform, opacity;
+    mix-blend-mode: screen;
+  }
+  .ab1 {
+    width: 700px; height: 700px;
+    background: radial-gradient(circle at 40% 40%,
+      rgba(123,94,167,0.28) 0%,
+      rgba(79,195,247,0.12) 50%,
+      transparent 70%);
+    top: -200px; left: -150px;
+    animation: auroraFloat1 20s ease-in-out infinite alternate;
+  }
+  .ab2 {
+    width: 600px; height: 600px;
+    background: radial-gradient(circle at 60% 40%,
+      rgba(38,208,161,0.22) 0%,
+      rgba(123,94,167,0.15) 55%,
+      transparent 70%);
+    top: 30vh; right: -100px;
+    animation: auroraFloat2 26s ease-in-out infinite alternate;
+  }
+  .ab3 {
+    width: 500px; height: 500px;
+    background: radial-gradient(circle at 50% 50%,
+      rgba(79,195,247,0.2) 0%,
+      rgba(240,98,146,0.1) 50%,
+      transparent 70%);
+    bottom: 5vh; left: 15%;
+    animation: auroraFloat3 32s ease-in-out infinite alternate;
+  }
+  .ab4 {
+    width: 400px; height: 400px;
+    background: radial-gradient(circle at 50% 50%,
+      rgba(255,202,40,0.12) 0%,
+      rgba(240,98,146,0.14) 50%,
+      transparent 70%);
+    top: 60vh; left: 50%;
+    animation: auroraFloat4 28s ease-in-out infinite alternate;
+  }
+
+  @keyframes auroraFloat1 {
+    from { transform: translate(0, 0) scale(1); }
+    to   { transform: translate(80px, 100px) scale(1.12); }
+  }
+  @keyframes auroraFloat2 {
+    from { transform: translate(0, 0) scale(1.05); }
+    to   { transform: translate(-70px, 80px) scale(0.92); }
+  }
+  @keyframes auroraFloat3 {
+    from { transform: translate(0, 0) scale(1); }
+    to   { transform: translate(60px, -70px) scale(1.08); }
+  }
+  @keyframes auroraFloat4 {
+    from { transform: translate(0, 0) scale(1); }
+    to   { transform: translate(-80px, -60px) scale(1.15); }
+  }
+
+  /* ── Mesh grid ── */
+  .ph-mesh {
+    position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px);
+    background-size: 72px 72px;
+    mask-image: radial-gradient(ellipse 90% 70% at 50% 30%, rgba(0,0,0,0.5), transparent);
+  }
+
+  /* ── Noise ── */
+  .ph-noise {
+    position: fixed; inset: 0; pointer-events: none; z-index: 1; opacity: 0.03;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* ══════════════════════════════════════════
+     FLOATING PARTICLES
+  ══════════════════════════════════════════ */
+  .ph-particles {
+    position: fixed; inset: 0; pointer-events: none; z-index: 1;
+  }
+  .particle {
+    position: absolute;
+    border-radius: 50%;
+    animation: particleDrift linear infinite;
+    will-change: transform, opacity;
+  }
+  @keyframes particleDrift {
+    0%   { transform: translateY(100vh) translateX(0) scale(0); opacity: 0; }
+    5%   { opacity: 1; transform: translateY(90vh) scale(1); }
+    95%  { opacity: 0.6; }
+    100% { transform: translateY(-5vh) translateX(var(--drift)) scale(0.5); opacity: 0; }
+  }
+
+  /* ══════════════════════════════════════════
+     FLOATING BADGE SYSTEM (micro pop-ups)
+  ══════════════════════════════════════════ */
+  .float-badges {
+    position: absolute; inset: 0; pointer-events: none; z-index: 2;
+    overflow: hidden;
+  }
+  .float-badge {
+    position: absolute;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 16px;
+    border-radius: 100px;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: var(--font-body);
+    letter-spacing: 0.02em;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid;
+    white-space: nowrap;
+    animation: badgeFloat linear infinite;
+    will-change: transform, opacity;
+  }
+  .fb-free {
+    background: rgba(0,230,118,0.12);
+    border-color: rgba(0,230,118,0.3);
+    color: #00e676;
+    top: 18%; left: 62%;
+    animation-duration: 14s;
+    animation-delay: 0s;
+  }
+  .fb-live {
+    background: rgba(240,98,146,0.12);
+    border-color: rgba(240,98,146,0.3);
+    color: #f06292;
+    top: 35%; left: 75%;
+    animation-duration: 18s;
+    animation-delay: -5s;
+  }
+  .fb-new {
+    background: rgba(79,195,247,0.12);
+    border-color: rgba(79,195,247,0.3);
+    color: #4fc3f7;
+    top: 55%; left: 68%;
+    animation-duration: 16s;
+    animation-delay: -8s;
+  }
+  .fb-cloud {
+    background: rgba(123,94,167,0.15);
+    border-color: rgba(157,127,212,0.35);
+    color: #c4a8ff;
+    top: 72%; left: 58%;
+    animation-duration: 20s;
+    animation-delay: -3s;
+  }
+
+  @keyframes badgeFloat {
+    0%, 100% { transform: translateY(0px) translateX(0px); opacity: 0.7; }
+    25%       { transform: translateY(-18px) translateX(8px); opacity: 1; }
+    50%       { transform: translateY(-8px) translateX(-6px); opacity: 0.85; }
+    75%       { transform: translateY(-24px) translateX(4px); opacity: 1; }
+  }
+
+  .fb-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: currentColor;
+    box-shadow: 0 0 6px currentColor;
+    animation: fbPulse 1.8s ease-in-out infinite;
+    flex-shrink: 0;
+  }
+  @keyframes fbPulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(0.7); opacity: 0.5; }
+  }
+
+  /* ══════════════════════════════════════════
+     INNER WRAP
+  ══════════════════════════════════════════ */
+  .ph-inner { position: relative; z-index: 3; }
+  .ph-container { max-width: 1240px; margin: 0 auto; padding: 0 28px; }
+
+  /* ══════════════════════════════════════════
+     HERO
+  ══════════════════════════════════════════ */
+  .ph-hero {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    padding: 130px 0 90px;
+    position: relative;
+  }
+
+  .ph-hero-layout {
+    display: grid;
+    grid-template-columns: 1fr 420px;
+    gap: 80px;
+    align-items: center;
+  }
+
+  /* Eyebrow */
+  .ph-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 18px;
+    border-radius: 100px;
+    background: rgba(79,195,247,0.07);
+    border: 1px solid rgba(79,195,247,0.2);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--cyan);
+    margin-bottom: 32px;
+  }
+  .ph-eyebrow-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--cyan);
+    box-shadow: 0 0 10px var(--cyan);
+    animation: eyebrowPulse 2.5s ease-in-out infinite;
+  }
+  @keyframes eyebrowPulse {
+    0%,100% { transform: scale(1); box-shadow: 0 0 10px var(--cyan); }
+    50% { transform: scale(1.3); box-shadow: 0 0 20px var(--cyan), 0 0 35px rgba(79,195,247,0.4); }
+  }
+
+  /* Title */
+  .ph-title {
+    font-family: var(--font-display);
+    font-size: clamp(48px, 6.5vw, 86px);
+    font-weight: 700;
+    line-height: 1.02;
+    letter-spacing: -0.03em;
+    margin-bottom: 26px;
+  }
+
+  .ph-title-line2 {
+    display: block;
+    position: relative;
+  }
+
+  /* Colour-shifting gradient text */
+  .ph-grad {
+    background: linear-gradient(
+      135deg,
+      var(--violet3) 0%,
+      var(--cyan) 40%,
+      var(--teal) 70%,
+      var(--violet3) 100%
+    );
+    background-size: 300% 300%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: gradShift 8s ease-in-out infinite;
+  }
+  @keyframes gradShift {
+    0%   { background-position: 0% 50%; }
+    50%  { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
+  .ph-desc {
+    font-size: 17px;
+    color: var(--text2);
+    line-height: 1.75;
+    max-width: 520px;
+    margin-bottom: 44px;
+    font-weight: 300;
+  }
+
+  /* CTA buttons */
+  .ph-actions { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 72px; }
+
+  .ph-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    font-family: var(--font-body);
+    font-size: 14px;
+    font-weight: 600;
+    padding: 14px 30px;
+    border-radius: 100px;
+    cursor: pointer;
+    border: none;
+    text-decoration: none;
+    transition: all 0.35s var(--ease);
+    position: relative;
+    overflow: hidden;
+    letter-spacing: 0.01em;
+  }
+  .ph-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(255,255,255,0);
+    transition: background 0.3s;
+    border-radius: inherit;
+  }
+  .ph-btn:hover::before { background: rgba(255,255,255,0.07); }
+
+  .ph-btn-primary {
+    background: linear-gradient(135deg, var(--violet) 0%, var(--indigo) 100%);
+    color: #fff;
+    box-shadow: 0 0 50px rgba(123,94,167,0.5), 0 4px 20px rgba(0,0,0,0.5);
+  }
+  .ph-btn-primary:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 0 80px rgba(123,94,167,0.7), 0 8px 40px rgba(0,0,0,0.6);
+  }
+  .ph-btn-ghost {
+    background: rgba(255,255,255,0.04);
+    color: var(--text);
+    border: 1px solid var(--border2);
+    backdrop-filter: blur(12px);
+  }
+  .ph-btn-ghost:hover {
+    border-color: rgba(157,127,212,0.5);
+    color: var(--violet3);
+    transform: translateY(-2px);
+    background: rgba(123,94,167,0.1);
+  }
+  .ph-btn-sm { padding: 10px 22px; font-size: 13px; }
+
+  .ph-btn-green {
+    background: linear-gradient(135deg, var(--teal), #00c87a);
+    color: #0a1a12;
+    box-shadow: 0 0 30px rgba(38,208,161,0.4);
+    font-weight: 700;
+  }
+  .ph-btn-green:hover { transform: translateY(-2px); box-shadow: 0 0 50px rgba(38,208,161,0.6); }
+
+  /* Stats */
+  .ph-stats { display: flex; gap: 48px; flex-wrap: wrap; }
+  .ph-stat { display: flex; flex-direction: column; gap: 3px; }
+  .ph-stat .num {
+    font-family: var(--font-display);
+    font-size: 30px;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--text) 0%, var(--violet3) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: -0.02em;
+  }
+  .ph-stat .lbl { font-size: 12px; color: var(--text3); letter-spacing: 0.04em; }
+
+  /* Hero right — visual card stack */
+  .ph-hero-visual {
+    position: relative;
+    height: 480px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Rotating ring */
+  .ph-ring {
+    position: absolute;
+    border-radius: 50%;
+    border: 1px dashed rgba(157,127,212,0.25);
+    animation: spinRing linear infinite;
+  }
+  .ring1 { width: 340px; height: 340px; animation-duration: 40s; }
+  .ring2 { width: 260px; height: 260px; animation-duration: 30s; animation-direction: reverse; border-color: rgba(79,195,247,0.18); }
+  .ring3 { width: 180px; height: 180px; animation-duration: 20s; border-color: rgba(38,208,161,0.2); }
+  @keyframes spinRing { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+  /* Ring dots */
+  .ring-dot {
+    position: absolute;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--violet3);
+    box-shadow: 0 0 12px var(--violet);
+    top: 50%; left: 50%;
+    margin: -4px;
+  }
+  .ring-dot::after {
+    content: '';
+    position: absolute;
+    inset: -4px;
+    border-radius: 50%;
+    border: 1px solid rgba(157,127,212,0.4);
+    animation: ringDotPulse 2s ease-in-out infinite;
+  }
+  @keyframes ringDotPulse {
+    0%,100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.6); opacity: 0; }
+  }
+
+  /* Centre card */
+  .ph-hero-card {
+    position: relative;
+    z-index: 5;
+    background: rgba(26,29,46,0.85);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 20px;
+    padding: 24px;
+    width: 240px;
+    backdrop-filter: blur(30px);
+    box-shadow:
+      0 30px 80px rgba(0,0,0,0.6),
+      inset 0 1px 0 rgba(255,255,255,0.08),
+      0 0 0 1px rgba(123,94,167,0.15);
+    animation: heroCardFloat 6s ease-in-out infinite;
+  }
+  @keyframes heroCardFloat {
+    0%,100% { transform: translateY(0) rotate(-1deg); }
+    50% { transform: translateY(-14px) rotate(1deg); }
+  }
+
+  .ph-hc-icon {
+    width: 44px; height: 44px; border-radius: 12px;
+    background: linear-gradient(135deg, var(--violet) 0%, var(--indigo) 100%);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; margin-bottom: 14px;
+    box-shadow: 0 8px 24px rgba(123,94,167,0.5);
+  }
+  .ph-hc-title { font-family: var(--font-display); font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+  .ph-hc-sub { font-size: 12px; color: var(--text2); margin-bottom: 16px; line-height: 1.5; }
+  .ph-hc-bar { height: 4px; border-radius: 2px; background: var(--surface2); overflow: hidden; margin-bottom: 6px; }
+  .ph-hc-fill {
+    height: 100%; border-radius: 2px;
+    background: linear-gradient(90deg, var(--violet), var(--cyan));
+    animation: barAnimate 3s ease-in-out infinite;
+  }
+  @keyframes barAnimate {
+    0%   { width: 30%; }
+    50%  { width: 78%; }
+    100% { width: 30%; }
+  }
+  .ph-hc-meta { display: flex; justify-content: space-between; font-size: 11px; color: var(--text3); }
+
+  /* Floating mini-cards around hero */
+  .ph-mini-card {
+    position: absolute;
+    background: rgba(22,25,36,0.9);
+    border: 1px solid var(--border2);
+    border-radius: 14px;
+    padding: 12px 16px;
+    backdrop-filter: blur(24px);
+    box-shadow: 0 16px 48px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06);
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    z-index: 4;
+  }
+  .mc1 { top: 8%; left: -10%; animation: mc1float 7s ease-in-out infinite; color: var(--teal); border-color: rgba(38,208,161,0.2); }
+  .mc2 { bottom: 20%; right: -12%; animation: mc2float 9s ease-in-out infinite; color: var(--cyan); border-color: rgba(79,195,247,0.2); }
+  .mc3 { bottom: 5%; left: 5%; animation: mc3float 8s ease-in-out infinite; color: var(--violet3); border-color: rgba(157,127,212,0.2); }
+  @keyframes mc1float { 0%,100%{transform:translateY(0) rotate(-2deg)} 50%{transform:translateY(-12px) rotate(2deg)} }
+  @keyframes mc2float { 0%,100%{transform:translateY(0) rotate(1deg)} 50%{transform:translateY(-18px) rotate(-2deg)} }
+  @keyframes mc3float { 0%,100%{transform:translateY(0) rotate(-1deg)} 50%{transform:translateY(-10px) rotate(2deg)} }
+
+  /* ── Section divider ── */
+  .ph-divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.07) 40%, rgba(255,255,255,0.07) 60%, transparent);
+    position: relative;
+    z-index: 3;
+  }
+
+  /* ══════════════════════════════════════════
+     SECTION SHARED
+  ══════════════════════════════════════════ */
+  .ph-section { padding: 110px 0; }
+  .ph-section-sm { padding: 70px 0; }
+  .ph-section-tinted { background: rgba(255,255,255,0.015); }
+
+  .ph-section-head { text-align: center; margin-bottom: 60px; }
+  .ph-section-eyebrow {
+    display: inline-block;
+    font-size: 11px; font-weight: 700;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--violet3);
+    margin-bottom: 16px;
+    position: relative;
+  }
+  .ph-section-eyebrow::before,
+  .ph-section-eyebrow::after {
+    content: '';
+    position: absolute;
+    top: 50%; height: 1px;
+    width: 40px;
+    background: linear-gradient(90deg, transparent, var(--violet3));
+    transform: translateY(-50%);
+  }
+  .ph-section-eyebrow::before { right: calc(100% + 14px); background: linear-gradient(90deg, transparent, var(--violet3)); }
+  .ph-section-eyebrow::after  { left: calc(100% + 14px);  background: linear-gradient(90deg, var(--violet3), transparent); }
+
+  .ph-section-head h2 {
+    font-family: var(--font-display);
+    font-size: clamp(30px, 4vw, 46px);
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    margin-bottom: 16px;
+    line-height: 1.1;
+  }
+  .ph-section-head p {
+    color: var(--text2);
+    font-size: 16px;
+    max-width: 500px;
+    margin: 0 auto;
+    line-height: 1.7;
+    font-weight: 300;
+  }
+
+  /* ══════════════════════════════════════════
+     CATEGORY GRID
+  ══════════════════════════════════════════ */
+  .ph-cats {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+    gap: 14px;
+  }
+  .ph-cat {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 24px 14px 20px;
+    border-radius: var(--r);
+    background: rgba(26,29,46,0.7);
+    border: 1px solid var(--border);
+    text-align: center;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text2);
+    text-decoration: none;
+    letter-spacing: 0.02em;
+    transition: all 0.4s var(--ease);
+    overflow: hidden;
+    backdrop-filter: blur(16px);
+  }
+  .ph-cat::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 50% 0%, var(--cat-glow, rgba(123,94,167,0.15)) 0%, transparent 65%);
+    opacity: 0;
+    transition: opacity 0.4s;
+  }
+  .ph-cat:hover {
+    transform: translateY(-6px);
+    border-color: var(--cat-color);
+    color: var(--cat-color);
+    box-shadow:
+      0 20px 50px rgba(0,0,0,0.4),
+      0 0 0 1px var(--cat-color),
+      0 0 30px var(--cat-glow, rgba(123,94,167,0.2));
+  }
+  .ph-cat:hover::before { opacity: 1; }
+  .ph-cat .cat-icon {
+    font-size: 28px;
+    transition: transform 0.4s var(--ease);
+    position: relative;
+    z-index: 1;
+  }
+  .ph-cat:hover .cat-icon { transform: scale(1.2) translateY(-2px); }
+  .ph-cat .cat-label { position: relative; z-index: 1; line-height: 1.4; }
+
+  /* ══════════════════════════════════════════
+     WORKSHOP CARDS
+  ══════════════════════════════════════════ */
+  .ph-workshops { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 22px; }
+
+  .ph-workshop {
+    position: relative;
+    border-radius: 20px;
+    overflow: hidden;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: all 0.4s var(--ease);
+  }
+  .ph-workshop::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(123,94,167,0.08) 0%, transparent 60%);
+    opacity: 0;
+    transition: opacity 0.4s;
+    pointer-events: none;
+  }
+  .ph-workshop:hover {
+    transform: translateY(-6px);
+    border-color: rgba(157,127,212,0.4);
+    box-shadow:
+      0 30px 70px rgba(0,0,0,0.5),
+      0 0 0 1px rgba(157,127,212,0.15),
+      0 0 60px rgba(123,94,167,0.15);
+  }
+  .ph-workshop:hover::after { opacity: 1; }
+
+  .ph-workshop-img {
+    width: 100%; height: 190px; object-fit: cover; display: block;
+    transition: transform 0.6s var(--ease);
+  }
+  .ph-workshop:hover .ph-workshop-img { transform: scale(1.05); }
+  .ph-workshop-imgph {
+    height: 190px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 52px;
+    background: linear-gradient(135deg, var(--surface2), var(--ink3));
+    position: relative;
+    overflow: hidden;
+  }
+  .ph-workshop-imgph::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(circle at 30% 40%, rgba(123,94,167,0.2), transparent 60%);
+  }
+
+  .ph-workshop-body { padding: 22px; }
+  .ph-workshop-meta { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+
+  .ph-live-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--rose); padding: 5px 12px;
+    border-radius: 100px;
+    background: rgba(240,98,146,0.1);
+    border: 1px solid rgba(240,98,146,0.3);
+    box-shadow: 0 0 15px rgba(240,98,146,0.15);
+  }
+  .ph-live-dot {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: var(--rose);
+    box-shadow: 0 0 8px var(--rose);
+    animation: fbPulse 1.4s ease-in-out infinite;
+  }
+
+  .ph-workshop-title {
+    font-family: var(--font-display);
+    font-size: 19px; font-weight: 700;
+    margin-bottom: 9px; line-height: 1.3;
+  }
+  .ph-workshop-desc {
+    font-size: 13px; color: var(--text2); line-height: 1.65;
+    margin-bottom: 20px;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+
+  /* ══════════════════════════════════════════
+     COURSE CARDS
+  ══════════════════════════════════════════ */
+  .ph-courses { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 22px; }
+
+  .ph-course {
+    background: rgba(26,29,46,0.8);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    overflow: hidden;
+    cursor: pointer;
+    display: flex; flex-direction: column;
+    transition: all 0.4s var(--ease);
+    backdrop-filter: blur(10px);
+    position: relative;
+  }
+  .ph-course::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(135deg, rgba(123,94,167,0.06) 0%, transparent 50%);
+    opacity: 0; transition: opacity 0.4s;
+    pointer-events: none;
+    border-radius: inherit;
+  }
+  .ph-course:hover {
+    transform: translateY(-7px);
+    border-color: rgba(157,127,212,0.35);
+    box-shadow:
+      0 32px 80px rgba(0,0,0,0.5),
+      0 0 0 1px rgba(157,127,212,0.12),
+      0 0 50px rgba(123,94,167,0.1);
+  }
+  .ph-course:hover::before { opacity: 1; }
+
+  .ph-course-thumb {
+    height: 185px; position: relative; overflow: hidden;
+    background: var(--ink3);
+  }
+  .ph-course-thumb img {
+    width: 100%; height: 100%; object-fit: cover;
+    transition: transform 0.6s var(--ease);
+  }
+  .ph-course:hover .ph-course-thumb img { transform: scale(1.07); }
+
+  .ph-course-thumbph {
+    height: 100%; display: flex; align-items: center; justify-content: center;
+    font-size: 56px;
+    background: linear-gradient(135deg, var(--surface2) 0%, var(--ink3) 100%);
+    position: relative; overflow: hidden;
+  }
+  .ph-course-thumbph::after {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(circle at 40% 30%, rgba(123,94,167,0.15), transparent 65%);
+  }
+
+  /* Shimmer overlay on thumb */
+  .ph-course-thumb::after {
+    content: '';
+    position: absolute;
+    top: 0; left: -100%;
+    width: 60%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.04), transparent);
+    transition: left 0.6s var(--ease);
+  }
+  .ph-course:hover .ph-course-thumb::after { left: 150%; }
+
+  .ph-course-body { padding: 20px 22px; flex: 1; display: flex; flex-direction: column; position: relative; z-index: 1; }
+  .ph-course-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+
+  .ph-tag {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.03em;
+    padding: 4px 11px; border-radius: 100px;
+    border: 1px solid var(--border2);
+    color: var(--text2);
+    background: rgba(255,255,255,0.04);
+  }
+
+  .ph-course-title {
+    font-family: var(--font-display);
+    font-size: 16px; font-weight: 700;
+    margin-bottom: 9px; line-height: 1.35;
+    letter-spacing: -0.01em;
+  }
+  .ph-course-desc {
+    font-size: 13px; color: var(--text2); line-height: 1.65; flex: 1;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    margin-bottom: 18px; font-weight: 300;
+  }
+  .ph-course-footer {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-top: auto; padding-top: 16px;
+    border-top: 1px solid var(--border);
+  }
+  .ph-trainer {
+    display: flex; align-items: center; gap: 9px;
+    font-size: 12px; font-weight: 500; color: var(--text2);
+  }
+  .ph-trainer img, .ph-trainer-ph {
+    width: 26px; height: 26px; border-radius: 50%; object-fit: cover;
+  }
+  .ph-trainer-ph {
+    background: linear-gradient(135deg, var(--violet), var(--indigo));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 800; color: #fff;
+    border: 1px solid var(--border2);
+  }
+
+  .ph-price-free {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--teal); padding: 4px 12px;
+    border-radius: 100px;
+    background: rgba(38,208,161,0.1);
+    border: 1px solid rgba(38,208,161,0.3);
+    box-shadow: 0 0 14px rgba(38,208,161,0.15);
+  }
+  .ph-price {
+    font-family: var(--font-display);
+    font-size: 16px; font-weight: 700; color: var(--text);
+    letter-spacing: -0.01em;
+  }
+
+  /* ══════════════════════════════════════════
+     EMPTY STATE
+  ══════════════════════════════════════════ */
+  .ph-empty {
+    text-align: center; padding: 70px 24px;
+    border: 1px dashed var(--border2); border-radius: 20px;
+    color: var(--text3);
+  }
+  .ph-empty .ico { font-size: 44px; margin-bottom: 16px; opacity: 0.5; }
+  .ph-empty p { font-size: 15px; font-weight: 300; }
+
+  /* ══════════════════════════════════════════
+     MISSION
+  ══════════════════════════════════════════ */
+  .ph-mission {
+    padding: 100px 0;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .ph-mission::before {
+    content: '"';
+    font-family: var(--font-display);
+    position: absolute; top: -60px; left: 50%;
+    transform: translateX(-50%);
+    font-size: 260px; line-height: 1;
+    color: var(--violet);
+    opacity: 0.035;
+    pointer-events: none; user-select: none;
+    animation: quoteBreath 8s ease-in-out infinite;
+  }
+  @keyframes quoteBreath {
+    0%,100% { transform: translateX(-50%) scale(1); opacity: 0.035; }
+    50% { transform: translateX(-50%) scale(1.03); opacity: 0.05; }
+  }
+
+  .ph-mission-quote {
+    font-family: var(--font-display);
+    font-size: clamp(24px, 3.8vw, 40px);
+    font-weight: 700; letter-spacing: -0.025em;
+    line-height: 1.25; max-width: 680px;
+    margin: 0 auto 22px;
+    background: linear-gradient(135deg, var(--text) 30%, var(--violet3) 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+    position: relative; z-index: 1;
+  }
+  .ph-mission-sub {
+    font-size: 16px; color: var(--text2);
+    max-width: 500px; margin: 0 auto 36px;
+    line-height: 1.75; font-weight: 300;
+    position: relative; z-index: 1;
+  }
+
+  /* ══════════════════════════════════════════
+     MODAL
+  ══════════════════════════════════════════ */
+  .ph-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.8);
+    backdrop-filter: blur(20px);
+    z-index: 200;
+    display: flex; align-items: center; justify-content: center;
+    padding: 24px;
+    animation: phFadeIn 0.2s ease;
+  }
+  @keyframes phFadeIn { from{opacity:0} to{opacity:1} }
+
+  .ph-modal {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 24px;
+    max-width: 490px; width: 100%;
+    padding: 32px;
+    box-shadow:
+      0 50px 120px rgba(0,0,0,0.8),
+      inset 0 1px 0 rgba(255,255,255,0.07),
+      0 0 0 1px rgba(123,94,167,0.15);
+    animation: phSlideUp 0.35s var(--ease);
+    max-height: 92vh; overflow-y: auto;
+    position: relative;
+  }
+  .ph-modal::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(157,127,212,0.5), transparent);
+    border-radius: 24px 24px 0 0;
+  }
+  @keyframes phSlideUp { from{opacity:0;transform:translateY(28px)} to{opacity:1;transform:translateY(0)} }
+
+  .ph-modal-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 18px; gap: 18px; }
+  .ph-modal-title { font-family: var(--font-display); font-size: 21px; font-weight: 700; line-height: 1.3; }
+  .ph-modal-close {
+    width: 34px; height: 34px; border-radius: 50%;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border);
+    color: var(--text2); font-size: 13px;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.25s;
+  }
+  .ph-modal-close:hover {
+    background: rgba(240,98,146,0.1);
+    border-color: rgba(240,98,146,0.4);
+    color: var(--rose);
+    transform: rotate(90deg);
+  }
+  .ph-modal-desc { font-size: 14px; color: var(--text2); line-height: 1.65; margin-bottom: 26px; font-weight: 300; }
+
+  .ph-input-group { display: flex; flex-direction: column; gap: 7px; margin-bottom: 16px; }
+  .ph-label { font-size: 12px; font-weight: 600; color: var(--text2); letter-spacing: 0.05em; }
+  .ph-input {
+    background: var(--ink2);
+    border: 1px solid var(--border2);
+    border-radius: 12px;
+    padding: 12px 16px;
+    color: var(--text);
+    font-size: 14px;
+    font-family: var(--font-body);
+    outline: none; width: 100%;
+    transition: border-color 0.25s, box-shadow 0.25s;
+  }
+  .ph-input::placeholder { color: var(--text3); }
+  .ph-input:focus {
+    border-color: var(--violet);
+    box-shadow: 0 0 0 3px rgba(123,94,167,0.18);
+  }
+
+  .ph-error {
+    background: rgba(240,98,146,0.07);
+    border: 1px solid rgba(240,98,146,0.22);
+    border-radius: 12px; padding: 12px 16px;
+    font-size: 13px; color: var(--rose);
+    margin-bottom: 16px;
+  }
+  .ph-success {
+    background: rgba(38,208,161,0.07);
+    border: 1px solid rgba(38,208,161,0.22);
+    border-radius: 14px; padding: 20px;
+  }
+  .ph-success-label { font-size: 13px; color: var(--teal); font-weight: 700; margin-bottom: 14px; }
+
+  /* ══════════════════════════════════════════
+     ENTRANCE ANIMATIONS
+  ══════════════════════════════════════════ */
+  .ph-fade { opacity: 0; transform: translateY(28px); animation: phFadeUp 0.8s var(--ease) forwards; }
+  .ph-fade.d1 { animation-delay: 0.1s }
+  .ph-fade.d2 { animation-delay: 0.22s }
+  .ph-fade.d3 { animation-delay: 0.34s }
+  .ph-fade.d4 { animation-delay: 0.46s }
+  .ph-fade.d5 { animation-delay: 0.58s }
+  @keyframes phFadeUp { to { opacity: 1; transform: translateY(0) } }
+
+  /* ══════════════════════════════════════════
+     RESPONSIVE
+  ══════════════════════════════════════════ */
+  @media (max-width: 900px) {
+    .ph-hero-layout { grid-template-columns: 1fr; }
+    .ph-hero-visual { display: none; }
+    .float-badges { display: none; }
+  }
+  @media (max-width: 640px) {
+    .ph-hero { padding: 110px 0 70px; }
+    .ph-courses { grid-template-columns: 1fr; }
+    .ph-workshops { grid-template-columns: 1fr; }
+    .ph-stats { gap: 26px; }
+    .ph-cats { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
+  }
+`;
+
+/* ─── CAT MAP ─────────────────────────────────────────────────────────────────── */
+const CAT_MAP = {
+  aws:                  { label: 'AWS Cloud',        icon: '☁️',  color: '#ff9900', glow: 'rgba(255,153,0,0.2)' },
+  azure:                { label: 'Azure',            icon: '🔷',  color: '#0ea5e9', glow: 'rgba(14,165,233,0.2)' },
+  cybersecurity:        { label: 'Cybersecurity',    icon: '🛡️',  color: '#f06292', glow: 'rgba(240,98,146,0.2)' },
+  soc:                  { label: 'SOC Ops',          icon: '🔍',  color: '#26d0a1', glow: 'rgba(38,208,161,0.2)' },
+  'pentesting-web':     { label: 'Web Pentest',      icon: '🕸️',  color: '#ffca28', glow: 'rgba(255,202,40,0.2)' },
+  'pentesting-network': { label: 'Net Pentest',      icon: '🌐',  color: '#ff8a65', glow: 'rgba(255,138,101,0.2)' },
+  'pentesting-api':     { label: 'API Pentest',      icon: '⚡',  color: '#c4a8ff', glow: 'rgba(196,168,255,0.2)' },
+  networking:           { label: 'Networking',       icon: '📡',  color: '#4fc3f7', glow: 'rgba(79,195,247,0.2)' },
+};
+
+/* ─── PARTICLE CONFIG ─────────────────────────────────────────────────────────── */
+const PARTICLES = Array.from({ length: 22 }, (_, i) => ({
+  id: i,
+  size: Math.random() * 3 + 1,
+  left: Math.random() * 100,
+  drift: (Math.random() - 0.5) * 120,
+  delay: Math.random() * 30,
+  duration: Math.random() * 18 + 18,
+  color: ['rgba(157,127,212,0.5)', 'rgba(79,195,247,0.5)', 'rgba(38,208,161,0.5)', 'rgba(240,98,146,0.4)', 'rgba(255,202,40,0.4)'][Math.floor(Math.random() * 5)],
+}));
+
+/* ─── CourseCard ─────────────────────────────────────────────────────────────── */
+function CourseCard({ course, delay = 0 }) {
+  const navigate = useNavigate();
+  const cat = CAT_MAP[course.category] || {};
+  return (
+    <div
+      className={`ph-course ph-fade d${delay}`}
+      onClick={() => navigate(course.price > 0 ? `/courses/premium/${course.slug}` : `/courses/${course.slug}`)}
+    >
+      <div className="ph-course-thumb">
+        {course.thumbnail
+          ? <img src={course.thumbnail} alt={course.title} />
+          : <div className="ph-course-thumbph">{cat.icon || '📚'}</div>}
+      </div>
+      <div className="ph-course-body">
+        <div className="ph-course-meta">
+          <span
+            className="ph-tag"
+            style={{ color: cat.color, borderColor: `${cat.color}30`, background: `${cat.color}10` }}
+          >
+            {cat.icon} {cat.label}
+          </span>
+          {course.level && <span className="ph-tag">{course.level}</span>}
+        </div>
+        <div className="ph-course-title">{course.title}</div>
+        <div className="ph-course-desc">{course.description}</div>
+        <div className="ph-course-footer">
+          <div className="ph-trainer">
+            {course.trainer?.photo
+              ? <img src={course.trainer.photo} alt={course.trainer.name} />
+              : <div className="ph-trainer-ph">{(course.trainer?.name || 'P')[0]}</div>}
+            {course.trainer?.name || 'Pragni'}
+          </div>
+          {course.price === 0
+            ? <span className="ph-price-free">FREE</span>
+            : <span className="ph-price">₹{course.price}</span>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── WorkshopBanner ─────────────────────────────────────────────────────────── */
+function WorkshopBanner({ workshop, onClick }) {
+  const d = new Date(workshop.scheduledAt);
+  const dateStr = d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
+  const timeStr = d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+  return (
+    <div className="ph-workshop" onClick={onClick}>
+      {workshop.bannerImage
+        ? <img className="ph-workshop-img" src={workshop.bannerImage} alt={workshop.title} />
+        : <div className="ph-workshop-imgph">🎓</div>}
+      <div className="ph-workshop-body">
+        <div className="ph-workshop-meta">
+          <span className="ph-live-badge">
+            <span className="ph-live-dot" /> LIVE
+          </span>
+          <span className="ph-tag" style={{ fontSize: 11 }}>{dateStr} · {timeStr}</span>
+        </div>
+        <div className="ph-workshop-title">{workshop.title}</div>
+        <div className="ph-workshop-desc">{workshop.description}</div>
+        <button className="ph-btn ph-btn-primary ph-btn-sm">Join Now →</button>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Home ───────────────────────────────────────────────────────────────────── */
+export default function Home() {
+  const [courses, setCourses]           = useState([]);
+  const [workshops, setWorkshops]       = useState([]);
+  const [selectedWorkshop, setSelectedWorkshop] = useState(null);
+  const [joinForm, setJoinForm]         = useState({ name: '', email: '', mobile: '' });
+  const [joinLoading, setJoinLoading]   = useState(false);
+  const [joinResult, setJoinResult]     = useState(null);
+  const [joinError, setJoinError]       = useState('');
+
+  /* Inject styles once */
+  useEffect(() => {
+    if (!document.getElementById('pragni-ph-styles')) {
+      const el = document.createElement('style');
+      el.id = 'pragni-ph-styles';
+      el.textContent = STYLES;
+      document.head.appendChild(el);
+    }
+  }, []);
+
+  /* API calls — unchanged logic */
+  useEffect(() => {
+    getCourses().then(r => setCourses(r.data.courses || [])).catch(() => {});
+    getWorkshops().then(r => setWorkshops(r.data.workshops || [])).catch(() => {});
+  }, []);
+
+  const handleJoin = async (e) => {
+    e.preventDefault();
+    setJoinLoading(true); setJoinError('');
+    try {
+      const r = await joinWorkshop(selectedWorkshop._id, joinForm);
+      setJoinResult(r.data.meetUrl);
+    } catch (err) {
+      setJoinError(err.response?.data?.error || 'Something went wrong. Try again.');
+    }
+    setJoinLoading(false);
+  };
+
+  const closeModal = () => {
+    setSelectedWorkshop(null); setJoinResult(null);
+    setJoinError(''); setJoinForm({ name: '', email: '', mobile: '' });
+  };
+
+  return (
+    <div className="ph-root">
+
+      {/* ── AURORA BACKGROUND ── */}
+      <div className="ph-aurora">
+        <div className="aurora-blob ab1" />
+        <div className="aurora-blob ab2" />
+        <div className="aurora-blob ab3" />
+        <div className="aurora-blob ab4" />
+      </div>
+      <div className="ph-mesh" />
+      <div className="ph-noise" />
+
+      {/* ── PARTICLES ── */}
+      <div className="ph-particles">
+        {PARTICLES.map(p => (
+          <div
+            key={p.id}
+            className="particle"
+            style={{
+              width: p.size, height: p.size,
+              left: `${p.left}%`,
+              background: p.color,
+              boxShadow: `0 0 ${p.size * 3}px ${p.color}`,
+              '--drift': `${p.drift}px`,
+              animationDuration: `${p.duration}s`,
+              animationDelay: `-${p.delay}s`,
+            }}
+          />
+        ))}
+      </div>
+
+      <div className="ph-inner">
+
+        {/* ════════════════════ HERO ════════════════════ */}
+        <section className="ph-hero">
+          <div className="ph-container">
+            <div className="ph-hero-layout">
+
+              {/* LEFT */}
+              <div>
+                <span className="ph-eyebrow ph-fade d1">
+                  <span className="ph-eyebrow-dot" />
+                  2 New Videos Every Week — Always Free
+                </span>
+
+                <h1 className="ph-title ph-fade d2">
+                  Learn{' '}
+                  <span className="ph-grad">Cybersecurity</span>
+                  <span className="ph-title-line2">
+                    &amp; Cloud. For Free.
+                  </span>
+                </h1>
+
+                <p className="ph-desc ph-fade d3">
+                  Pragni is built to make world-class tech skills accessible to everyone.
+                  AWS, Azure, SOC, Pentesting, Networking — free and affordable, always.
+                </p>
+
+                <div className="ph-actions ph-fade d4">
+                  <Link to="/courses" className="ph-btn ph-btn-primary">Browse Courses →</Link>
+                  <Link to="/workshops" className="ph-btn ph-btn-ghost">Live Workshops</Link>
+                </div>
+
+                <div className="ph-stats ph-fade d5">
+                  {[['8+', 'Course tracks'], ['100%', 'Free to start'], ['2/wk', 'New videos'], ['₹0', 'Hidden fees']].map(([num, lbl]) => (
+                    <div key={lbl} className="ph-stat">
+                      <span className="num">{num}</span>
+                      <span className="lbl">{lbl}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* RIGHT — VISUAL */}
+              <div className="ph-hero-visual">
+                {/* Rings */}
+                <div className="ph-ring ring1">
+                  <div className="ring-dot" style={{ transform: 'translateX(170px) translateY(-4px)' }} />
+                </div>
+                <div className="ph-ring ring2">
+                  <div className="ring-dot" style={{
+                    background: 'var(--cyan)', boxShadow: '0 0 12px var(--cyan)',
+                    transform: 'translateX(-130px) translateY(-4px)',
+                  }} />
+                </div>
+                <div className="ph-ring ring3">
+                  <div className="ring-dot" style={{
+                    background: 'var(--teal)', boxShadow: '0 0 12px var(--teal)',
+                    transform: 'translateX(-4px) translateY(90px)',
+                  }} />
+                </div>
+
+                {/* Centre card */}
+                <div className="ph-hero-card">
+                  <div className="ph-hc-icon">🛡️</div>
+                  <div className="ph-hc-title">Cybersecurity Fundamentals</div>
+                  <div className="ph-hc-sub">Module 4 of 12 · In progress</div>
+                  <div className="ph-hc-bar">
+                    <div className="ph-hc-fill" />
+                  </div>
+                  <div className="ph-hc-meta">
+                    <span>Progress</span>
+                    <span style={{ color: 'var(--teal)', fontWeight: 700 }}>Free</span>
+                  </div>
+                </div>
+
+                {/* Floating mini-cards */}
+                <div className="ph-mini-card mc1">
+                  <span>✦</span> +2,400 learners this month
+                </div>
+                <div className="ph-mini-card mc2">
+                  <span style={{ fontSize: 14 }}>☁️</span> AWS Certified track live
+                </div>
+                <div className="ph-mini-card mc3">
+                  <span style={{ fontSize: 14 }}>🔥</span> SOC Workshop today
+                </div>
+
+                {/* Floating Badges */}
+                <div className="float-badges">
+                  <div className="float-badge fb-free">
+                    <span className="fb-dot" /> Free Courses
+                  </div>
+                  <div className="float-badge fb-live">
+                    <span className="fb-dot" /> Live Now
+                  </div>
+                  <div className="float-badge fb-new">
+                    <span className="fb-dot" /> New Video
+                  </div>
+                  <div className="float-badge fb-cloud">
+                    <span className="fb-dot" /> Cloud Track
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </section>
+
+        <div className="ph-divider" />
+
+        {/* ════════════ CATEGORIES ════════════ */}
+        <section className="ph-section-sm ph-section-tinted">
+          <div className="ph-container">
+            <div className="ph-cats">
+              {Object.entries(CAT_MAP).map(([slug, { label, icon, color, glow }]) => (
+                <Link
+                  key={slug}
+                  to={`/courses?category=${slug}`}
+                  className="ph-cat"
+                  style={{ '--cat-color': color, '--cat-glow': glow }}
+                >
+                  <span className="cat-icon">{icon}</span>
+                  <span className="cat-label">{label}</span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <div className="ph-divider" />
+
+        {/* ════════════ WORKSHOPS ════════════ */}
+        {workshops.length > 0 && (
+          <section className="ph-section">
+            <div className="ph-container">
+              <div className="ph-section-head">
+                <div className="ph-section-eyebrow">Live Sessions</div>
+                <h2>Upcoming Workshops &amp; Classes</h2>
+                <p>Join live instructor-led sessions. Interactive, hands-on, free.</p>
+              </div>
+              <div className="ph-workshops">
+                {workshops.slice(0, 4).map(w => (
+                  <WorkshopBanner
+                    key={w._id}
+                    workshop={w}
+                    onClick={() => { setSelectedWorkshop(w); setJoinResult(null); }}
+                  />
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
+
+        <div className="ph-divider" />
+
+        {/* ════════════ PREMIUM COURSES ════════════ */}
+        <section className="ph-section ph-section-tinted">
+          <div className="ph-container">
+            <div className="ph-section-head">
+              <div className="ph-section-eyebrow">Premium</div>
+              <h2>Premium Courses — At Very Affordable Price</h2>
+              <p>Structured, mentor-led programs with certification. Invest in yourself.</p>
+            </div>
+
+            {(() => {
+              const premiumCourses = courses.filter(c => c.price > 0);
+              if (premiumCourses.length === 0) {
+                return (
+                  <div className="ph-empty" style={{ border:'1px dashed rgba(255,202,40,0.18)', background:'rgba(255,202,40,0.03)' }}>
+                    <div className="ico">🚀</div>
+                    <p style={{ color:'var(--amber)', fontWeight:600, marginBottom:6 }}>Coming Soon</p>
+                    <p style={{ color:'var(--text3)', fontSize:13 }}>Premium courses launching soon. Explore free courses below while you wait.</p>
+                  </div>
+                );
+              }
+              return (
+                <>
+                  <div className="ph-courses">
+                    {premiumCourses.slice(0, 3).map((c, i) => (
+                      <CourseCard key={c._id} course={c} delay={Math.min(i + 1, 5)} />
+                    ))}
+                  </div>
+                  {premiumCourses.length > 3 && (
+                    <div style={{ textAlign: 'center', marginTop: 40 }}>
+                      <Link to="/courses" className="ph-btn ph-btn-ghost">View All Premium →</Link>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
+          </div>
+        </section>
+
+        <div className="ph-divider" />
+
+        {/* ════════════ FREE COURSES ════════════ */}
+        <section className="ph-section">
+          <div className="ph-container">
+            <div className="ph-section-head">
+              <div className="ph-section-eyebrow">Learn Today</div>
+              <h2>Free Courses — Start Instantly</h2>
+              <p>No signup required. Just click and start learning.</p>
+            </div>
+
+            {(() => {
+              const freeCourses = courses.filter(c => c.price === 0);
+              if (freeCourses.length === 0) {
+                return (
+                  <div className="ph-empty">
+                    <div className="ico">📚</div>
+                    <p>Courses coming soon. Check back weekly!</p>
+                  </div>
+                );
+              }
+              return (
+                <>
+                  <div className="ph-courses">
+                    {freeCourses.slice(0, 6).map((c, i) => (
+                      <CourseCard key={c._id} course={c} delay={Math.min(i + 1, 5)} />
+                    ))}
+                  </div>
+                  {freeCourses.length > 6 && (
+                    <div style={{ textAlign: 'center', marginTop: 56 }}>
+                      <Link to="/courses" className="ph-btn ph-btn-ghost">View All Free Courses →</Link>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
+          </div>
+        </section>
+
+        <div className="ph-divider" />
+
+        {/* ════════════ MISSION ════════════ */}
+        <section className="ph-mission">
+          <div className="ph-container">
+            <p className="ph-mission-quote">
+              "Every learner deserves world-class tech education."
+            </p>
+            <p className="ph-mission-sub">
+              Pragni was founded to break the paywall on cybersecurity and cloud education.
+              Free for everyone, always.
+            </p>
+            <Link to="/about" className="ph-btn ph-btn-ghost">Our Mission →</Link>
+          </div>
+        </section>
+
+      </div>{/* /ph-inner */}
+
+      {/* ════════════ WORKSHOP MODAL ════════════ */}
+      {selectedWorkshop && (
+        <div className="ph-overlay" onClick={e => e.target === e.currentTarget && closeModal()}>
+          <div className="ph-modal">
+            <div className="ph-modal-header">
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                  <span className="ph-live-badge">
+                    <span className="ph-live-dot" /> LIVE
+                  </span>
+                  <span className="ph-tag" style={{ fontSize: 11 }}>
+                    {new Date(selectedWorkshop.scheduledAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
+                  </span>
+                </div>
+                <div className="ph-modal-title">{selectedWorkshop.title}</div>
+              </div>
+              <button className="ph-modal-close" onClick={closeModal}>✕</button>
+            </div>
+            <p className="ph-modal-desc">{selectedWorkshop.description}</p>
+
+            {joinResult
+              ? (
+                <div className="ph-success">
+                  <p className="ph-success-label">✅ Registered! Join via Google Meet:</p>
+                  <a
+                    href={joinResult}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="ph-btn ph-btn-green"
+                    style={{ width: '100%', justifyContent: 'center' }}
+                  >
+                    Open Google Meet →
+                  </a>
+                </div>
+              )
+              : (
+                <form onSubmit={handleJoin}>
+                  {joinError && <div className="ph-error">⚠️ {joinError}</div>}
+                  <div className="ph-input-group">
+                    <label className="ph-label">Your Name *</label>
+                    <input
+                      className="ph-input" placeholder="John Doe" required
+                      value={joinForm.name}
+                      onChange={e => setJoinForm(f => ({ ...f, name: e.target.value }))}
+                    />
+                  </div>
+                  <div className="ph-input-group">
+                    <label className="ph-label">Email Address *</label>
+                    <input
+                      type="email" className="ph-input" placeholder="you@email.com" required
+                      value={joinForm.email}
+                      onChange={e => setJoinForm(f => ({ ...f, email: e.target.value }))}
+                    />
+                  </div>
+                  <div className="ph-input-group">
+                    <label className="ph-label">Mobile Number *</label>
+                    <input
+                      type="tel" className="ph-input" placeholder="+91 9876543210" required
+                      value={joinForm.mobile}
+                      onChange={e => setJoinForm(f => ({ ...f, mobile: e.target.value }))}
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    className="ph-btn ph-btn-primary"
+                    style={{ width: '100%', justifyContent: 'center', marginTop: 8 }}
+                    disabled={joinLoading}
+                  >
+                    {joinLoading ? 'Getting link...' : 'Get Join Link →'}
+                  </button>
+                </form>
+              )
+            }
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

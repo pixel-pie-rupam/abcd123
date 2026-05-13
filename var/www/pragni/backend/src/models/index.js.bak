@@ -1,0 +1,106 @@
+const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
+
+const userSchema = new mongoose.Schema({
+  name: { type: String, required: true, trim: true },
+  email: { type: String, required: true, unique: true, lowercase: true },
+  password: { type: String, required: true, minlength: 8 },
+  role: { type: String, enum: ['admin', 'trainer'], default: 'trainer' },
+  bio: { type: String, default: '' },
+  photo: { type: String, default: '' },
+  specializations: [String],
+  socialLinks: { linkedin: String, github: String, twitter: String },
+  isActive: { type: Boolean, default: true },
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+}, { timestamps: true });
+
+userSchema.pre('save', async function(next) {
+  if (!this.isModified('password')) return next();
+  this.password = await bcrypt.hash(this.password, 12);
+  next();
+});
+userSchema.methods.matchPassword = async function(plain) {
+  return bcrypt.compare(plain, this.password);
+};
+
+const courseSchema = new mongoose.Schema({
+  title: { type: String, required: true, trim: true },
+  slug: { type: String, required: true, unique: true },
+  category: {
+    type: String,
+    enum: ['aws','azure','cybersecurity','soc','pentesting-web','pentesting-network','pentesting-api','networking'],
+    required: true
+  },
+  subcategory: { type: String, default: '' },
+  description: { type: String, required: true },
+  thumbnail: { type: String, default: '' },
+  level: { type: String, enum: ['beginner','intermediate','advanced'], default: 'beginner' },
+  price: { type: Number, default: 0 },
+  isFeatured: { type: Boolean, default: false },
+  isPublished: { type: Boolean, default: false },
+  isComing: { type: Boolean, default: false },
+  trainer: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  syllabus: [{ weekNumber: Number, title: String, topics: [String] }],
+  enrolledCount: { type: Number, default: 0 },
+  order: { type: Number, default: 0 },
+}, { timestamps: true });
+
+const videoSchema = new mongoose.Schema({
+  course: { type: mongoose.Schema.Types.ObjectId, ref: 'Course', required: true },
+  title: { type: String, required: true },
+  description: { type: String, default: '' },
+  encryptedVideoId: { type: String, required: true },
+  weekNumber: { type: Number, default: 1 },
+  order: { type: Number, default: 0 },
+  duration: { type: String, default: '' },
+  resources: [{
+    type: { type: String, enum: ['pdf','gdrive','notes','link'] },
+    title: String,
+    encryptedUrl: String,
+  }],
+  isPublished: { type: Boolean, default: false },
+  uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+}, { timestamps: true });
+
+const workshopSchema = new mongoose.Schema({
+  title: { type: String, required: true },
+  description: { type: String, required: true },
+  bannerImage: { type: String, default: '' },
+  scheduledAt: { type: Date, required: true },
+  durationMinutes: { type: Number, default: 60 },
+  encryptedMeetLink: { type: String, default: '' },
+  category: { type: String, default: 'general' },
+  isActive: { type: Boolean, default: true },
+  registrationCount: { type: Number, default: 0 },
+}, { timestamps: true });
+
+// NEW — stores each person who registers for a workshop
+const registrationSchema = new mongoose.Schema({
+  workshop: { type: mongoose.Schema.Types.ObjectId, ref: 'Workshop', required: true },
+  name: { type: String, required: true },
+  email: { type: String, required: true, lowercase: true, trim: true },
+  mobile: { type: String, default: '' },
+  joinedAt: { type: Date, default: Date.now },
+}, { timestamps: true });
+
+const commentSchema = new mongoose.Schema({
+  video: { type: mongoose.Schema.Types.ObjectId, ref: 'Video' },
+  course: { type: mongoose.Schema.Types.ObjectId, ref: 'Course' },
+  userName: { type: String, required: true },
+  userEmail: { type: String, required: true },
+  content: { type: String, required: true, maxlength: 2000 },
+  isDoubt: { type: Boolean, default: false },
+  isResolved: { type: Boolean, default: false },
+  reply: { type: String, default: '' },
+  repliedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  isApproved: { type: Boolean, default: false },
+}, { timestamps: true });
+
+module.exports = {
+  User:         mongoose.model('User', userSchema),
+  Course:       mongoose.model('Course', courseSchema),
+  Video:        mongoose.model('Video', videoSchema),
+  Workshop:     mongoose.model('Workshop', workshopSchema),
+  Registration: mongoose.model('Registration', registrationSchema),
+  Comment:      mongoose.model('Comment', commentSchema),
+};

@@ -1,0 +1,1610 @@
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { getCourses, getWorkshops, joinWorkshop } from '../utils/api';
+import { useMeta } from '../context/SeoContext';
+
+/* ════════════════════════════════════════════════════════════════════
+   PRAGNI 3D HOME — Cinematic cyberpunk aesthetic
+   Pure CSS 3D transforms + SVG filters + canvas particle system
+   No external 3D libraries — fully self-contained
+════════════════════════════════════════════════════════════════════ */
+const STYLES = `
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Orbitron:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@300;400;500&display=swap');
+
+:root {
+  --bg:    #020408;
+  --bg2:   #060c14;
+  --bg3:   #0a1628;
+  --s1:    #0d1f38;
+  --s2:    #122540;
+  --lift:  #1a3350;
+  --b1:    rgba(0,200,255,0.07);
+  --b2:    rgba(0,200,255,0.14);
+  --b3:    rgba(0,200,255,0.25);
+  --text:  #e0f0ff;
+  --t2:    #6b8aaa;
+  --t3:    #2d4460;
+  --neon:  #00c8ff;
+  --neon2: #0080ff;
+  --purple:#8b5cf6;
+  --pink:  #f472b6;
+  --teal:  #14f195;
+  --gold:  #fbbf24;
+  --red:   #ff3860;
+  --fo:    'Orbitron', monospace;
+  --fs:    'Space Grotesk', sans-serif;
+  --fm:    'JetBrains Mono', monospace;
+  --ease:  cubic-bezier(0.16,1,0.3,1);
+}
+
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0 }
+::selection { background: rgba(0,200,255,.25); color:#fff }
+::-webkit-scrollbar { width:3px }
+::-webkit-scrollbar-track { background:var(--bg) }
+::-webkit-scrollbar-thumb { background:var(--neon); border-radius:2px }
+
+.home { font-family:var(--fs); background:var(--bg); color:var(--text); overflow-x:hidden; min-height:100vh; position:relative }
+
+/* ── CANVAS BACKGROUND ── */
+#h3d-canvas { position:fixed; inset:0; z-index:0; pointer-events:none }
+
+/* ── SCAN LINE OVERLAY ── */
+.h-scanlines {
+  position:fixed; inset:0; z-index:1; pointer-events:none;
+  background:repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,200,255,.008) 2px, rgba(0,200,255,.008) 4px);
+  animation: scanMove 8s linear infinite;
+}
+@keyframes scanMove { to { background-position: 0 100px } }
+
+/* ── NOISE GRAIN ── */
+.h-grain {
+  position:fixed; inset:0; z-index:1; pointer-events:none; opacity:.035;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)'/%3E%3C/svg%3E");
+  animation: grainShift 0.4s steps(1) infinite;
+}
+@keyframes grainShift { 0%{transform:translate(0,0)} 25%{transform:translate(-2%,-3%)} 50%{transform:translate(3%,1%)} 75%{transform:translate(-1%,3%)} }
+
+/* ── INNER LAYERS ── */
+.h-inner { position:relative; z-index:2 }
+.h-wrap  { max-width:1280px; margin:0 auto; padding:0 40px }
+
+/* ══════════════════════════════════════════════
+   HERO
+══════════════════════════════════════════════ */
+.h-hero {
+  min-height:100vh; display:flex; align-items:center;
+  padding:120px 0 80px; position:relative; overflow:hidden;
+}
+
+/* Horizontal neon lines */
+.h-hero::before {
+  content:''; position:absolute; left:0; right:0; top:50%; height:1px;
+  background:linear-gradient(90deg,transparent,rgba(0,200,255,.3),rgba(139,92,246,.3),transparent);
+  animation:lineSlide 4s ease-in-out infinite alternate;
+}
+@keyframes lineSlide { from{opacity:.4;transform:scaleX(.8)} to{opacity:.8;transform:scaleX(1)} }
+
+.h-hero-layout { display:grid; grid-template-columns:1fr 520px; gap:60px; align-items:center }
+
+/* ── EYEBROW ── */
+.h-eyebrow {
+  display:inline-flex; align-items:center; gap:10px;
+  font-family:var(--fm); font-size:10px; font-weight:500; letter-spacing:.2em; text-transform:uppercase;
+  color:var(--neon); margin-bottom:24px; position:relative;
+}
+.h-eyebrow::before {
+  content:''; width:32px; height:1px; background:var(--neon); box-shadow:0 0 8px var(--neon);
+}
+.h-eb-pulse { width:6px;height:6px;border-radius:50%;background:var(--teal);box-shadow:0 0 12px var(--teal),0 0 24px rgba(20,241,149,.4);animation:glow 1.8s ease-in-out infinite }
+@keyframes glow{0%,100%{box-shadow:0 0 8px var(--teal),0 0 16px rgba(20,241,149,.3)}50%{box-shadow:0 0 20px var(--teal),0 0 40px rgba(20,241,149,.5),0 0 60px rgba(20,241,149,.2)}}
+
+/* ── TITLE ── */
+.h-title {
+  font-family:var(--fo); font-size:clamp(38px,5.5vw,78px); font-weight:900;
+  line-height:.95; letter-spacing:-.02em; margin-bottom:28px;
+}
+.h-t-white { color:var(--text); display:block }
+.h-t-neon {
+  display:block; position:relative;
+  background:linear-gradient(90deg, var(--neon) 0%, var(--purple) 40%, var(--pink) 70%, var(--neon) 100%);
+  background-size:200%; -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+  background-clip:text; animation:chromaShift 5s linear infinite;
+  filter:drop-shadow(0 0 30px rgba(0,200,255,.4));
+}
+@keyframes chromaShift { to { background-position:200% center } }
+.h-t-outline {
+  display:block; -webkit-text-stroke:1.5px rgba(0,200,255,.5); -webkit-text-fill-color:transparent;
+  filter:drop-shadow(0 0 15px rgba(0,200,255,.3));
+}
+
+/* ── DESC ── */
+.h-desc { font-size:16px; color:var(--t2); line-height:1.8; max-width:520px; margin-bottom:40px; font-weight:300 }
+
+/* ── CTA ── */
+.h-ctas { display:flex; gap:14px; flex-wrap:wrap; margin-bottom:56px }
+.h-btn {
+  display:inline-flex; align-items:center; gap:9px; font-family:var(--fo);
+  font-size:11px; font-weight:700; letter-spacing:.12em; text-transform:uppercase;
+  padding:14px 30px; border-radius:4px; cursor:pointer; border:none;
+  text-decoration:none; transition:all .3s var(--ease); position:relative; overflow:hidden;
+}
+.h-btn::before {
+  content:''; position:absolute; inset:0;
+  background:linear-gradient(90deg,transparent 0%,rgba(255,255,255,.08) 50%,transparent 100%);
+  transform:translateX(-100%); transition:transform .4s;
+}
+.h-btn:hover::before { transform:translateX(100%) }
+.h-btn-primary {
+  background:linear-gradient(135deg, var(--neon2), var(--neon));
+  color:#000; box-shadow:0 0 30px rgba(0,200,255,.4),inset 0 1px 0 rgba(255,255,255,.2);
+}
+.h-btn-primary:hover { box-shadow:0 0 60px rgba(0,200,255,.7),0 0 100px rgba(0,200,255,.3); transform:translateY(-2px) }
+.h-btn-ghost {
+  background:rgba(0,200,255,.05); color:var(--neon); border:1px solid var(--b2);
+  backdrop-filter:blur(10px);
+}
+.h-btn-ghost:hover { background:rgba(0,200,255,.12); border-color:var(--b3); box-shadow:0 0 20px rgba(0,200,255,.15) }
+.h-btn-sm { padding:9px 20px; font-size:10px }
+
+/* ── STATS ── */
+.h-stats { display:flex; gap:0; border:1px solid var(--b1); border-radius:8px; overflow:hidden; backdrop-filter:blur(20px) }
+.h-stat {
+  flex:1; padding:18px 20px; position:relative; text-align:center;
+  border-right:1px solid var(--b1); background:rgba(0,200,255,.025);
+}
+.h-stat:last-child { border-right:none }
+.h-stat::before { content:''; position:absolute; top:0; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent,var(--neon),transparent) }
+.h-snum { font-family:var(--fo); font-size:22px; font-weight:800; color:var(--neon); letter-spacing:-.02em; display:block; margin-bottom:4px }
+.h-slbl { font-size:9px; font-weight:500; letter-spacing:.16em; text-transform:uppercase; color:var(--t3) }
+
+/* ══════════════════════════════════════════════
+   3D HERO VISUAL
+══════════════════════════════════════════════ */
+.h3d-scene {
+  perspective:1200px; width:100%; height:520px;
+  display:flex; align-items:center; justify-content:center;
+  position:relative;
+}
+.h3d-stage {
+  transform-style:preserve-3d;
+  animation:stageRotY 30s linear infinite;
+  width:300px; height:300px; position:relative;
+}
+@keyframes stageRotY { to { transform:rotateY(360deg) } }
+
+/* CUBE */
+.h3d-cube {
+  width:140px; height:140px;
+  transform-style:preserve-3d;
+  position:absolute; top:50%; left:50%;
+  margin:-70px 0 0 -70px;
+  animation:cubeFloat 6s ease-in-out infinite;
+}
+@keyframes cubeFloat {
+  0%,100%{transform:translateY(0) rotateX(0deg)}
+  50%{transform:translateY(-20px) rotateX(10deg)}
+}
+.h3d-face {
+  position:absolute; width:140px; height:140px;
+  background:rgba(0,200,255,.04); border:1px solid rgba(0,200,255,.25);
+  display:flex; align-items:center; justify-content:center;
+  backdrop-filter:blur(4px); backface-visibility:visible;
+}
+.h3d-face::before {
+  content:''; position:absolute; inset:6px; border:1px solid rgba(0,200,255,.1);
+}
+.h3d-face-front  { transform:translateZ(70px) }
+.h3d-face-back   { transform:translateZ(-70px) rotateY(180deg) }
+.h3d-face-left   { transform:translateX(-70px) rotateY(-90deg) }
+.h3d-face-right  { transform:translateX(70px) rotateY(90deg) }
+.h3d-face-top    { transform:translateY(-70px) rotateX(90deg) }
+.h3d-face-bottom { transform:translateY(70px) rotateX(-90deg) }
+.face-front-glow { width:60px;height:60px;border-radius:50%;background:radial-gradient(circle,rgba(0,200,255,.3),transparent 70%);filter:blur(8px) }
+
+/* ORBITING RINGS */
+.h3d-ring {
+  position:absolute; top:50%; left:50%; border-radius:50%;
+  border:1px solid; transform-style:preserve-3d;
+}
+.ring1 {
+  width:260px; height:260px; margin:-130px 0 0 -130px;
+  border-color:rgba(0,200,255,.2);
+  animation:ring1rot 12s linear infinite;
+}
+.ring2 {
+  width:200px; height:200px; margin:-100px 0 0 -100px;
+  border-color:rgba(139,92,246,.25); border-style:dashed;
+  animation:ring2rot 18s linear infinite reverse;
+}
+.ring3 {
+  width:320px; height:320px; margin:-160px 0 0 -160px;
+  border-color:rgba(20,241,149,.12);
+  animation:ring3rot 24s linear infinite;
+  transform:rotateX(60deg);
+}
+@keyframes ring1rot { to { transform:rotateY(360deg) rotateX(25deg) } }
+@keyframes ring2rot { to { transform:rotateZ(360deg) rotateX(70deg) } }
+@keyframes ring3rot { to { transform:rotateX(60deg) rotateY(360deg) } }
+
+/* Dots on ring1 */
+.ring-dot {
+  position:absolute; width:8px; height:8px; border-radius:50%;
+  top:-4px; left:50%; margin-left:-4px;
+}
+.rd1 { background:var(--neon); box-shadow:0 0 12px var(--neon) }
+.rd2 { background:var(--purple); box-shadow:0 0 12px var(--purple); top:calc(100% - 4px) }
+.rd3 { background:var(--teal); box-shadow:0 0 12px var(--teal); left:-4px; top:50% }
+
+/* FLOATING GEOMETRIC SHAPES */
+.h3d-shapes { position:absolute; inset:0; pointer-events:none }
+
+.h3d-prism {
+  position:absolute; transform-style:preserve-3d;
+  animation:prismFloat linear infinite;
+}
+
+/* Tetrahedron (triangle) using CSS */
+.geo-tri {
+  width:0; height:0;
+  border-left:30px solid transparent;
+  border-right:30px solid transparent;
+  border-bottom:52px solid;
+  filter:drop-shadow(0 0 8px currentColor);
+  animation:triSpin linear infinite;
+}
+@keyframes triSpin { to { transform:rotate(360deg) } }
+
+/* Diamond */
+.geo-diamond {
+  width:40px; height:40px; border:1px solid;
+  transform:rotate(45deg);
+  position:relative;
+}
+.geo-diamond::before {
+  content:''; position:absolute; inset:4px; border:1px solid; border-color:inherit; opacity:.5;
+}
+
+/* Hexagon */
+.geo-hex {
+  width:44px; height:25px; position:relative;
+  background:transparent; border-top:1px solid; border-bottom:1px solid;
+}
+.geo-hex::before,.geo-hex::after {
+  content:''; position:absolute; width:0; height:0;
+}
+
+/* Floating data boxes */
+.h3d-databox {
+  position:absolute; background:rgba(6,12,20,.85);
+  border:1px solid; border-radius:6px; padding:10px 14px;
+  font-family:var(--fm); font-size:10px; font-weight:400;
+  backdrop-filter:blur(20px); z-index:10;
+  animation:boxFloat ease-in-out infinite;
+  white-space:nowrap; transform-style:preserve-3d;
+}
+.h3d-databox::before {
+  content:''; position:absolute; top:-1px; left:0; right:0; height:1px;
+  background:linear-gradient(90deg,transparent,currentColor,transparent);
+}
+@keyframes boxFloat {
+  0%,100%{transform:translateY(0) rotateY(-5deg)}
+  50%{transform:translateY(-12px) rotateY(5deg)}
+}
+.db1 { top:8%; left:2%; border-color:rgba(0,200,255,.4); color:var(--neon);  animation-duration:7s }
+.db2 { top:30%; right:0%;  border-color:rgba(139,92,246,.4); color:var(--purple); animation-duration:9s; animation-delay:1s }
+.db3 { bottom:25%; left:0%; border-color:rgba(20,241,149,.4); color:var(--teal);   animation-duration:8s; animation-delay:2s }
+.db4 { bottom:8%; right:5%; border-color:rgba(244,114,182,.4); color:var(--pink);   animation-duration:6s; animation-delay:.5s }
+.db-label { font-size:8px; letter-spacing:.15em; opacity:.6; text-transform:uppercase; margin-bottom:4px }
+.db-val { font-size:14px; font-weight:700; letter-spacing:.04em }
+.db-bar { height:2px; background:rgba(255,255,255,.1); border-radius:1px; margin-top:6px; overflow:hidden }
+.db-fill { height:100%; border-radius:1px; background:currentColor; animation:barPulse 2.5s ease-in-out infinite }
+@keyframes barPulse { 0%{width:30%}50%{width:80%}100%{width:30%} }
+
+/* Glitch lines */
+.h3d-glitch {
+  position:absolute; pointer-events:none; overflow:hidden;
+}
+.glitch-line {
+  position:absolute; left:0; right:0; height:1px;
+  background:linear-gradient(90deg,transparent,rgba(0,200,255,.6),rgba(139,92,246,.4),transparent);
+  animation:glitchLine linear infinite;
+}
+@keyframes glitchLine {
+  0%{top:-2px;opacity:0}
+  5%{opacity:1}
+  95%{opacity:1}
+  100%{top:100%;opacity:0}
+}
+
+/* ══════════════════════════════════════════════
+   SECTION SHARED
+══════════════════════════════════════════════ */
+.h-sec { padding:100px 0; position:relative }
+.h-sec-sm { padding:60px 0 }
+.h-hr {
+  height:1px; background:linear-gradient(90deg,transparent,var(--b2) 30%,var(--b3) 50%,var(--b2) 70%,transparent);
+  position:relative; margin:0;
+}
+.h-hr::after {
+  content:''; position:absolute; top:-2px; left:50%; transform:translateX(-50%);
+  width:6px; height:6px; border-radius:50%; background:var(--neon); box-shadow:0 0 12px var(--neon);
+}
+
+.h-sec-head { text-align:center; margin-bottom:60px }
+.h-sec-kicker {
+  display:inline-flex; align-items:center; gap:10px;
+  font-family:var(--fo); font-size:9px; font-weight:700; letter-spacing:.25em; text-transform:uppercase;
+  color:var(--neon); margin-bottom:18px;
+}
+.h-sec-kicker::before,.h-sec-kicker::after {
+  content:''; width:40px; height:1px; background:linear-gradient(90deg,transparent,var(--neon));
+}
+.h-sec-kicker::after { transform:scaleX(-1) }
+.h-sec-head h2 {
+  font-family:var(--fo); font-size:clamp(24px,3.5vw,42px); font-weight:800;
+  letter-spacing:-.02em; line-height:1.1; margin-bottom:16px; color:var(--text);
+}
+.h-sec-head p { font-size:15px; color:var(--t2); max-width:480px; margin:0 auto; line-height:1.75; font-weight:300 }
+
+.h-value-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:16px }
+.h-value-card {
+  background:rgba(255,255,255,.04); border:1px solid var(--b1); border-radius:22px;
+  padding:24px; backdrop-filter:blur(18px); min-height:220px; position:relative; overflow:hidden;
+  box-shadow:0 16px 50px rgba(0,0,0,.22); transition:transform .3s var(--ease),border-color .3s var(--ease);
+}
+.h-value-card::before {
+  content:''; position:absolute; inset:0;
+  background:radial-gradient(circle at top left, rgba(0,200,255,.12), transparent 58%);
+  pointer-events:none;
+}
+.h-value-card:hover { transform:translateY(-4px); border-color:var(--b3) }
+.h-value-kicker {
+  display:inline-flex; align-items:center; gap:8px; margin-bottom:16px;
+  font-family:var(--fm); font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:var(--neon);
+}
+.h-value-dot { width:8px; height:8px; border-radius:50%; background:var(--neon); box-shadow:0 0 10px var(--neon) }
+.h-value-card h3 { font-family:var(--fo); font-size:20px; line-height:1.12; margin-bottom:12px; position:relative; z-index:1 }
+.h-value-card p { font-size:14px; color:var(--t2); line-height:1.7; position:relative; z-index:1 }
+.h-value-chip {
+  display:inline-flex; margin-top:18px; padding:6px 12px; border-radius:999px; border:1px solid var(--b2);
+  font-size:11px; color:var(--text); background:rgba(255,255,255,.05); position:relative; z-index:1;
+}
+
+.h-roadmap { display:grid; grid-template-columns:1.1fr .9fr; gap:22px; align-items:stretch }
+.h-roadmap-panel,.h-roadmap-card {
+  background:rgba(255,255,255,.04); border:1px solid var(--b1); border-radius:24px; backdrop-filter:blur(20px);
+}
+.h-roadmap-panel { padding:30px; position:relative; overflow:hidden }
+.h-roadmap-panel::before {
+  content:''; position:absolute; inset:0;
+  background:linear-gradient(135deg, rgba(139,92,246,.16), transparent 45%, rgba(0,200,255,.08));
+  pointer-events:none;
+}
+.h-roadmap-panel > * { position:relative; z-index:1 }
+.h-roadmap-panel h3 { font-family:var(--fo); font-size:clamp(24px,3.2vw,34px); line-height:1.1; margin-bottom:14px }
+.h-roadmap-panel p { color:var(--t2); line-height:1.8; font-size:15px; margin-bottom:22px }
+.h-roadmap-points { display:grid; gap:12px }
+.h-roadmap-point {
+  display:flex; gap:12px; align-items:flex-start; padding:14px 16px; border-radius:16px;
+  border:1px solid rgba(255,255,255,.08); background:rgba(2,4,8,.34);
+}
+.h-roadmap-point strong { display:block; font-size:14px; margin-bottom:4px }
+.h-roadmap-point span { color:var(--t2); font-size:13px; line-height:1.6 }
+.h-roadmap-step {
+  width:32px; height:32px; border-radius:12px; display:flex; align-items:center; justify-content:center;
+  background:rgba(0,200,255,.12); border:1px solid rgba(0,200,255,.24); color:var(--neon); font-family:var(--fo); font-size:13px; flex-shrink:0;
+}
+.h-roadmap-card { padding:22px; display:grid; gap:14px }
+.h-roadmap-mini {
+  padding:16px 18px; border-radius:18px; background:rgba(2,4,8,.38); border:1px solid rgba(255,255,255,.08);
+}
+.h-roadmap-mini small {
+  display:block; margin-bottom:8px; font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--t3);
+}
+.h-roadmap-mini strong { display:block; font-size:16px; margin-bottom:6px }
+.h-roadmap-mini p { font-size:13px; color:var(--t2); line-height:1.65 }
+
+/* Tinted section bg */
+.h-tint { background:linear-gradient(180deg, rgba(13,31,56,.4) 0%, transparent 100%) }
+
+/* ══════════════════════════════════════════════
+   3D CATEGORY GRID
+══════════════════════════════════════════════ */
+.h-cats { display:grid; grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); gap:12px }
+.h-cat {
+  position:relative; display:flex; flex-direction:column; align-items:center; gap:12px;
+  padding:22px 14px 18px; border-radius:8px; text-align:center; text-decoration:none;
+  font-family:var(--fo); font-size:9px; font-weight:600; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--t2); border:1px solid var(--b1); background:rgba(6,12,20,.8);
+  transition:all .4s var(--ease); overflow:hidden; transform-style:preserve-3d;
+  backdrop-filter:blur(12px);
+}
+.h-cat::before {
+  content:''; position:absolute; top:0; left:0; right:0; height:1px;
+  background:linear-gradient(90deg,transparent,var(--neon),transparent); opacity:0; transition:opacity .4s;
+}
+.h-cat::after {
+  content:''; position:absolute; inset:0; background:radial-gradient(circle at 50% 0%,rgba(0,200,255,.08),transparent 65%);
+  opacity:0; transition:opacity .4s;
+}
+.h-cat:hover { transform:translateY(-8px) rotateX(8deg); border-color:var(--b3); color:var(--neon); box-shadow:0 20px 60px rgba(0,200,255,.15),0 0 0 1px rgba(0,200,255,.1); }
+.h-cat:hover::before,.h-cat:hover::after { opacity:1 }
+.h-cat-img { width:44px;height:44px;border-radius:8px;object-fit:cover;border:1px solid var(--b2); transition:transform .4s var(--ease); position:relative; z-index:1 }
+.h-cat:hover .h-cat-img { transform:translateY(-4px) scale(1.05) }
+.h-cat-icon { font-size:28px; transition:transform .4s var(--ease); position:relative; z-index:1; filter:drop-shadow(0 0 8px rgba(0,200,255,.3)) }
+.h-cat:hover .h-cat-icon { transform:translateY(-4px) scale(1.15) }
+.h-cat-label { position:relative; z-index:1 }
+
+/* ══════════════════════════════════════════════
+   JOURNEY CAROUSEL
+══════════════════════════════════════════════ */
+.h-carousel { position:relative; overflow:hidden; border-radius:12px; border:1px solid var(--b2) }
+.h-carousel::before,.h-carousel::after {
+  content:''; position:absolute; top:0; bottom:0; width:120px; z-index:5; pointer-events:none;
+}
+.h-carousel::before { left:0; background:linear-gradient(90deg,var(--bg),transparent) }
+.h-carousel::after  { right:0; background:linear-gradient(-90deg,var(--bg),transparent) }
+.h-c-track { display:flex; transition:transform .6s var(--ease) }
+.h-c-slide { flex-shrink:0; width:100%; height:460px; position:relative; overflow:hidden }
+.h-c-slide img { width:100%;height:100%;object-fit:cover;transform:scale(1.05);transition:transform .6s var(--ease) }
+.h-c-slide.active img { transform:scale(1) }
+.h-c-overlay { position:absolute; inset:0; background:linear-gradient(to top,rgba(2,4,8,.95) 0%,rgba(2,4,8,.4) 50%,transparent 100%) }
+.h-c-info { position:absolute; bottom:40px; left:48px; right:48px }
+.h-c-info h3 { font-family:var(--fo);font-size:22px;font-weight:700;letter-spacing:-.01em;margin-bottom:8px }
+.h-c-info p { font-size:13px;color:rgba(224,240,255,.6);line-height:1.65 }
+.h-c-nav { display:flex;gap:8px;margin-top:16px }
+.h-c-arr { width:38px;height:38px;border-radius:4px;border:1px solid var(--b3);background:rgba(0,200,255,.08);color:var(--neon);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;transition:all .2s;backdrop-filter:blur(10px) }
+.h-c-arr:hover { background:rgba(0,200,255,.2);box-shadow:0 0 20px rgba(0,200,255,.2) }
+.h-c-dots { display:flex;gap:8px;justify-content:center;margin-top:20px }
+.h-c-dot { height:2px;border-radius:1px;background:rgba(0,200,255,.2);cursor:pointer;transition:all .4s }
+.h-c-dot.active { background:var(--neon);box-shadow:0 0 8px var(--neon);width:32px }
+.h-c-dot:not(.active) { width:16px }
+
+/* ══════════════════════════════════════════════
+   3D WORKSHOP CARDS
+══════════════════════════════════════════════ */
+.h-workshops { display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:20px }
+.h-ws {
+  position:relative; border-radius:10px; overflow:hidden;
+  background:rgba(6,12,20,.9); border:1px solid var(--b1);
+  cursor:pointer; transform-style:preserve-3d;
+  transition:all .4s var(--ease);
+}
+.h-ws:hover { transform:perspective(800px) rotateX(-4deg) translateY(-8px); border-color:var(--b3); box-shadow:0 30px 80px rgba(0,0,0,.5),0 0 40px rgba(0,200,255,.08) }
+.h-ws-img { width:100%;height:180px;object-fit:cover;display:block;transition:transform .5s var(--ease) }
+.h-ws:hover .h-ws-img { transform:scale(1.04) }
+.h-ws-ph {
+  height:180px; display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(135deg,var(--s1),var(--bg3)); position:relative; overflow:hidden;
+}
+.h-ws-ph::after { content:''; position:absolute; inset:0; background:radial-gradient(circle at 30% 40%,rgba(0,200,255,.12),transparent 60%) }
+.h-ws-body { padding:22px }
+.h-ws-top { display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap }
+.h-live-badge {
+  display:inline-flex;align-items:center;gap:6px;
+  font-family:var(--fo);font-size:8px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;
+  color:#000; background:var(--teal); padding:4px 12px; border-radius:3px;
+  box-shadow:0 0 16px rgba(20,241,149,.4);
+}
+.h-live-dot { width:5px;height:5px;border-radius:50%;background:#000;animation:ldot 1.2s ease-in-out infinite }
+@keyframes ldot { 0%,100%{opacity:1}50%{opacity:.3} }
+.h-ws-date { font-family:var(--fm);font-size:10px;color:var(--t3);letter-spacing:.06em }
+.h-ws-title { font-family:var(--fo);font-size:17px;font-weight:700;margin-bottom:10px;line-height:1.3;letter-spacing:-.01em }
+.h-ws-desc { font-size:13px;color:var(--t2);line-height:1.7;margin-bottom:18px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-weight:300 }
+
+/* ══════════════════════════════════════════════
+   3D COURSE CARDS
+══════════════════════════════════════════════ */
+.h-courses { display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px }
+.h-course {
+  background:rgba(6,12,20,.95); border:1px solid var(--b1); border-radius:10px;
+  overflow:hidden; cursor:pointer; display:flex;flex-direction:column;
+  transform-style:preserve-3d; transition:all .4s var(--ease);
+  position:relative;
+}
+.h-course::after {
+  content:''; position:absolute; top:0; left:0; right:0; height:1px;
+  background:linear-gradient(90deg,transparent,rgba(0,200,255,.4),transparent);
+  opacity:0; transition:opacity .4s;
+}
+.h-course:hover { transform:perspective(800px) rotateX(-3deg) rotateY(2deg) translateY(-8px); border-color:rgba(0,200,255,.3); box-shadow:0 30px 80px rgba(0,0,0,.6),0 0 40px rgba(0,200,255,.06) }
+.h-course:hover::after { opacity:1 }
+
+.h-c-thumb { height:176px; position:relative; overflow:hidden; background:var(--bg3) }
+.h-c-thumb img { width:100%;height:100%;object-fit:cover;transition:transform .5s var(--ease) }
+.h-course:hover .h-c-thumb img { transform:scale(1.06) }
+.h-c-ph { height:100%;display:flex;align-items:center;justify-content:center;font-size:48px;background:linear-gradient(135deg,var(--s1),var(--bg3));position:relative;overflow:hidden }
+.h-c-ph::after { content:''; position:absolute;inset:0;background:radial-gradient(circle at 40% 30%,rgba(0,200,255,.1),transparent 65%) }
+
+/* Share btn */
+.h-share {
+  position:absolute;top:10px;right:10px;width:32px;height:32px;border-radius:4px;
+  background:rgba(0,0,0,.6);border:1px solid rgba(0,200,255,.3);color:var(--neon);
+  display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:3;
+  opacity:0;transition:all .25s;backdrop-filter:blur(8px);
+}
+.h-course:hover .h-share { opacity:1 }
+.h-share:hover { background:rgba(0,200,255,.2) }
+
+.h-c-body { padding:18px;flex:1;display:flex;flex-direction:column }
+.h-c-meta { display:flex;align-items:center;gap:7px;margin-bottom:10px;flex-wrap:wrap }
+.h-badge {
+  font-family:var(--fo);font-size:8px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+  padding:3px 9px;border-radius:3px;border:1px solid;
+}
+.h-badge-cat { border-color:rgba(0,200,255,.3);color:var(--neon);background:rgba(0,200,255,.06) }
+.h-badge-lvl { border-color:rgba(255,255,255,.12);color:var(--t2);background:rgba(255,255,255,.03) }
+.h-c-title { font-family:var(--fo);font-size:14px;font-weight:700;margin-bottom:8px;line-height:1.4;letter-spacing:-.01em }
+.h-c-desc { font-size:12px;color:var(--t2);line-height:1.7;flex:1;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:14px;font-weight:300 }
+.h-c-footer { display:flex;align-items:center;justify-content:space-between;padding-top:12px;border-top:1px solid var(--b1) }
+.h-trainer { display:flex;align-items:center;gap:8px;font-family:var(--fm);font-size:10px;color:var(--t2) }
+.h-trainer img,.h-trainer-ph { width:22px;height:22px;border-radius:50%;object-fit:cover }
+.h-trainer-ph { background:linear-gradient(135deg,var(--neon2),var(--purple));display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:800;color:#fff }
+.h-free { font-family:var(--fo);font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--teal);padding:4px 10px;border-radius:3px;background:rgba(20,241,149,.08);border:1px solid rgba(20,241,149,.3);box-shadow:0 0 12px rgba(20,241,149,.1) }
+.h-price { font-family:var(--fo);font-size:16px;font-weight:800;letter-spacing:-.02em;color:var(--text) }
+
+/* ══════════════════════════════════════════════
+   TEAM SECTION
+══════════════════════════════════════════════ */
+.h-team { display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:16px }
+.h-tm {
+  background:rgba(6,12,20,.9);border:1px solid var(--b1);border-radius:10px;
+  padding:26px 18px;text-align:center;
+  transition:all .4s var(--ease);transform-style:preserve-3d;
+  position:relative; overflow:hidden;
+}
+.h-tm::before { content:'';position:absolute;top:0;left:0;right:0;height:60px;background:linear-gradient(to bottom,rgba(0,200,255,.04),transparent);pointer-events:none }
+.h-tm:hover { transform:perspective(800px) rotateX(-6deg) translateY(-6px);border-color:rgba(0,200,255,.25);box-shadow:0 20px 50px rgba(0,0,0,.4),0 0 30px rgba(0,200,255,.06) }
+.h-tm-photo { width:72px;height:72px;border-radius:50%;object-fit:cover;border:2px solid rgba(0,200,255,.25);margin:0 auto 14px;display:block }
+.h-tm-ph { width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,var(--neon2),var(--purple));display:flex;align-items:center;justify-content:center;font-family:var(--fo);font-size:24px;font-weight:800;color:#fff;margin:0 auto 14px;border:2px solid rgba(139,92,246,.3) }
+.h-tm-name { font-family:var(--fo);font-size:13px;font-weight:700;margin-bottom:4px;letter-spacing:-.01em }
+.h-tm-role { font-family:var(--fm);font-size:9px;color:var(--neon);letter-spacing:.14em;text-transform:uppercase;margin-bottom:10px }
+.h-tm-bio { font-size:12px;color:var(--t2);line-height:1.65;margin-bottom:14px;font-weight:300 }
+.h-tm-links { display:flex;justify-content:center;gap:8px }
+.h-tm-link { width:28px;height:28px;border-radius:4px;border:1px solid var(--b2);display:flex;align-items:center;justify-content:center;color:var(--t2);text-decoration:none;transition:all .2s }
+.h-tm-link:hover { border-color:var(--b3);color:var(--neon);background:rgba(0,200,255,.08) }
+
+/* ══════════════════════════════════════════════
+   VIDEO SECTION
+══════════════════════════════════════════════ */
+.h-video-wrap {
+  position:relative; border-radius:16px; overflow:hidden;
+  border:1px solid var(--b2); box-shadow:0 0 80px rgba(0,200,255,.08);
+  aspect-ratio:16/9; max-width:900px; margin:0 auto;
+  background:var(--bg2);
+}
+.h-video-wrap::before {
+  content:''; position:absolute; inset:0; z-index:2; pointer-events:none;
+  background:linear-gradient(to bottom, transparent 80%, rgba(2,4,8,.6) 100%);
+}
+.h-video-wrap::after {
+  content:''; position:absolute; inset:-1px; border-radius:17px;
+  border:1px solid transparent;
+  background:linear-gradient(135deg,rgba(0,200,255,.4),transparent 40%,rgba(139,92,246,.3)) border-box;
+  -webkit-mask:linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite:destination-out; mask-composite:exclude;
+  pointer-events:none;
+}
+.h-video-wrap video, .h-video-wrap iframe {
+  width:100%; height:100%; object-fit:cover; display:block;
+  border-radius:15px;
+}
+.h-video-overlay {
+  position:absolute; inset:0; z-index:3; display:flex;
+  align-items:center; justify-content:center;
+  background:rgba(2,4,8,.5); transition:opacity .3s; cursor:pointer;
+}
+.h-video-overlay.hidden { opacity:0; pointer-events:none }
+.h-play-btn {
+  width:72px; height:72px; border-radius:50%;
+  background:rgba(0,200,255,.1); border:2px solid rgba(0,200,255,.6);
+  display:flex; align-items:center; justify-content:center;
+  backdrop-filter:blur(10px); transition:all .3s;
+  box-shadow:0 0 40px rgba(0,200,255,.3);
+}
+.h-play-btn:hover { background:rgba(0,200,255,.25); box-shadow:0 0 60px rgba(0,200,255,.5); transform:scale(1.1) }
+.h-video-corner {
+  position:absolute; width:20px; height:20px; border-color:var(--neon);
+}
+.h-vc-tl { top:10px; left:10px;  border-top:1px solid; border-left:1px solid }
+.h-vc-tr { top:10px; right:10px; border-top:1px solid; border-right:1px solid }
+.h-vc-bl { bottom:10px; left:10px;  border-bottom:1px solid; border-left:1px solid }
+.h-vc-br { bottom:10px; right:10px; border-bottom:1px solid; border-right:1px solid }
+
+/* ══════════════════════════════════════════════
+   MISSION / QUOTE
+══════════════════════════════════════════════ */
+.h-mission {
+  padding:120px 0;text-align:center;position:relative;overflow:hidden;
+}
+.h-mission::before {
+  content:'"';font-family:var(--fo);position:absolute;top:-100px;left:50%;transform:translateX(-50%);
+  font-size:320px;line-height:1;color:var(--neon);opacity:.02;pointer-events:none;user-select:none;
+}
+.h-mission-q {
+  font-family:var(--fo);font-size:clamp(18px,3vw,36px);font-weight:800;letter-spacing:-.02em;line-height:1.25;
+  max-width:700px;margin:0 auto 20px;
+  background:linear-gradient(135deg,var(--text) 0%,var(--neon) 50%,var(--purple) 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  position:relative;z-index:1;
+}
+.h-mission-sub { font-size:15px;color:var(--t2);max-width:460px;margin:0 auto 36px;line-height:1.8;font-weight:300;position:relative;z-index:1 }
+
+/* ══════════════════════════════════════════════
+   MODAL
+══════════════════════════════════════════════ */
+.h-overlay { position:fixed;inset:0;background:rgba(0,0,0,.88);backdrop-filter:blur(20px);z-index:500;display:flex;align-items:center;justify-content:center;padding:24px;animation:fadeIn .2s }
+@keyframes fadeIn { from{opacity:0}to{opacity:1} }
+.h-modal {
+  background:var(--bg2);border:1px solid var(--b2);border-radius:10px;
+  max-width:460px;width:100%;padding:28px;
+  box-shadow:0 50px 120px rgba(0,0,0,.9),0 0 60px rgba(0,200,255,.08);
+  animation:slideUp .3s var(--ease);max-height:88vh;overflow-y:auto;position:relative;
+}
+.h-modal::before { content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--neon),transparent) }
+@keyframes slideUp { from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)} }
+.h-modal-hd { display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;gap:14px }
+.h-modal-title { font-family:var(--fo);font-size:17px;font-weight:700;letter-spacing:-.01em;line-height:1.3 }
+.h-mclose { width:30px;height:30px;border-radius:4px;background:rgba(0,200,255,.06);border:1px solid var(--b1);color:var(--t2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px;transition:all .2s;flex-shrink:0 }
+.h-mclose:hover { background:rgba(255,56,96,.1);border-color:rgba(255,56,96,.3);color:var(--red) }
+.h-modal-desc { font-size:13px;color:var(--t2);line-height:1.7;margin-bottom:20px;font-weight:300 }
+.h-input-g { display:flex;flex-direction:column;gap:6px;margin-bottom:12px }
+.h-label { font-family:var(--fo);font-size:8px;font-weight:700;color:var(--t3);letter-spacing:.2em;text-transform:uppercase }
+.h-input {
+  background:rgba(0,200,255,.03);border:1px solid var(--b1);border-radius:5px;
+  padding:11px 13px;color:var(--text);font-family:var(--fm);font-size:13px;
+  outline:none;width:100%;transition:border-color .2s,box-shadow .2s;
+}
+.h-input::placeholder { color:var(--t3) }
+.h-input:focus { border-color:var(--b3);box-shadow:0 0 0 3px rgba(0,200,255,.08) }
+.h-err { background:rgba(255,56,96,.07);border:1px solid rgba(255,56,96,.25);border-radius:6px;padding:10px 13px;font-family:var(--fm);font-size:12px;color:var(--red);margin-bottom:12px }
+.h-ok { background:rgba(20,241,149,.06);border:1px solid rgba(20,241,149,.2);border-radius:8px;padding:16px }
+.h-ok-lbl { font-family:var(--fo);font-size:11px;color:var(--teal);font-weight:700;margin-bottom:12px;letter-spacing:.06em;display:flex;align-items:center;gap:7px }
+
+/* Share toast */
+.h-share-toast { position:fixed;bottom:28px;right:28px;z-index:600;background:var(--bg2);border:1px solid rgba(20,241,149,.4);border-radius:6px;padding:12px 18px;font-family:var(--fo);font-size:10px;font-weight:700;letter-spacing:.1em;color:var(--teal);backdrop-filter:blur(20px);box-shadow:0 20px 50px rgba(0,0,0,.5),0 0 30px rgba(20,241,149,.1);animation:slideUp .3s var(--ease);display:flex;align-items:center;gap:8px }
+
+/* ══════════════════════════════════════════════
+   ANIMATIONS UTILITY
+══════════════════════════════════════════════ */
+.h-fade { opacity:0;transform:translateY(28px) scale(.98);animation:hFade .7s var(--ease) forwards }
+.d1{animation-delay:.06s}.d2{animation-delay:.14s}.d3{animation-delay:.22s}.d4{animation-delay:.32s}.d5{animation-delay:.42s}.d6{animation-delay:.52s}
+@keyframes hFade { to{opacity:1;transform:translateY(0) scale(1)} }
+
+/* ══════════════════════════════════════════════
+   RESPONSIVE
+══════════════════════════════════════════════ */
+@media(max-width:960px){.h-hero-layout,.h-roadmap{grid-template-columns:1fr}.h3d-scene{display:none}.h-value-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:640px){.h-hero{padding:80px 0 50px}.h-courses,.h-workshops,.h-value-grid{grid-template-columns:1fr}.h-wrap{padding:0 20px}.h-cats{grid-template-columns:repeat(auto-fill,minmax(100px,1fr))}.h-sec{padding:60px 0}.h-stats{flex-direction:column;gap:0}.h-roadmap-panel,.h-roadmap-card{padding:20px}}
+`;
+
+/* ── CANVAS PARTICLE SYSTEM ──────────────────────────────────────── */
+/* ── SCROLL-REACTIVE PARTICLE + GEOMETRY SYSTEM ──────────────────── */
+function useParticles(canvasRef) {
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    let raf, particles = [], scrollShapes = [], w, h;
+    let scrollY = 0, scrollVY = 0, lastScrollY = 0;
+    let mouseX = w/2, mouseY = h/2;
+
+    const resize = () => {
+      w = canvas.width  = window.innerWidth;
+      h = canvas.height = window.innerHeight;
+    };
+    resize();
+    window.addEventListener('resize', resize);
+
+    // Track scroll velocity for shape burst
+    const onScroll = () => {
+      scrollY = window.scrollY;
+      scrollVY = scrollY - lastScrollY;
+      lastScrollY = scrollY;
+      // Spawn burst shapes on scroll
+      if (Math.abs(scrollVY) > 4) {
+        const count = Math.min(Math.floor(Math.abs(scrollVY) / 3), 6);
+        for (let i = 0; i < count; i++) {
+          scrollShapes.push(new ScrollShape(scrollVY));
+        }
+      }
+    };
+    const onMouseMove = (e) => { mouseX = e.clientX; mouseY = e.clientY; };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('mousemove', onMouseMove, { passive: true });
+
+    // ── Base floating particles ──
+    class P {
+      constructor() { this.reset(true) }
+      reset(init = false) {
+        this.x = Math.random() * w;
+        this.y = init ? Math.random() * h : Math.random() * h + h;
+        this.size = Math.random() * 2.5 + .5;
+        this.vx = (Math.random() - .5) * .4;
+        this.vy = -(Math.random() * .6 + .2);
+        this.life = 0; this.maxLife = Math.random() * 350 + 180;
+        this.type = ['dot','dot','tri','cross','diamond','hex','ring'][Math.floor(Math.random()*7)];
+        const cols = ['rgba(0,200,255','rgba(139,92,246','rgba(20,241,149','rgba(244,114,182','rgba(251,191,36'];
+        this.color = cols[Math.floor(Math.random()*cols.length)];
+        this.rotation = Math.random() * Math.PI * 2;
+        this.rotSpeed = (Math.random() - .5) * .018;
+        // Scroll parallax layer: 0=slow, 1=fast
+        this.layer = Math.random();
+      }
+      draw() {
+        const a = Math.sin(this.life / this.maxLife * Math.PI) * .65;
+        ctx.save();
+        // Parallax offset by scroll
+        const py = this.y - scrollY * this.layer * .08;
+        ctx.translate(this.x, py);
+        ctx.rotate(this.rotation);
+        ctx.strokeStyle = `${this.color},${a})`;
+        ctx.fillStyle   = `${this.color},${a*.12})`;
+        ctx.lineWidth = .7;
+        const s = this.size;
+        switch(this.type) {
+          case 'dot':
+            ctx.beginPath(); ctx.arc(0,0,s,0,Math.PI*2);
+            ctx.fillStyle=`${this.color},${a})`; ctx.fill(); break;
+          case 'tri':
+            ctx.beginPath(); ctx.moveTo(0,-s*3.2); ctx.lineTo(s*2.8,s*1.6); ctx.lineTo(-s*2.8,s*1.6); ctx.closePath();
+            ctx.stroke(); ctx.fill(); break;
+          case 'cross':
+            ctx.beginPath();
+            ctx.moveTo(-s*2.2,0); ctx.lineTo(s*2.2,0);
+            ctx.moveTo(0,-s*2.2); ctx.lineTo(0,s*2.2); ctx.stroke();
+            // diagonal cross
+            ctx.beginPath();
+            ctx.moveTo(-s*1.5,-s*1.5); ctx.lineTo(s*1.5,s*1.5);
+            ctx.moveTo(s*1.5,-s*1.5); ctx.lineTo(-s*1.5,s*1.5);
+            ctx.globalAlpha *= .4; ctx.stroke(); ctx.globalAlpha = 1; break;
+          case 'diamond':
+            ctx.beginPath(); ctx.moveTo(0,-s*2.8); ctx.lineTo(s*1.8,0); ctx.lineTo(0,s*2.8); ctx.lineTo(-s*1.8,0); ctx.closePath();
+            ctx.stroke(); ctx.fill(); break;
+          case 'hex':
+            ctx.beginPath();
+            for(let i=0;i<6;i++){const a=i*Math.PI/3;ctx.lineTo(Math.cos(a)*s*2,Math.sin(a)*s*2);}
+            ctx.closePath(); ctx.stroke(); ctx.fill(); break;
+          case 'ring':
+            ctx.beginPath(); ctx.arc(0,0,s*2.2,0,Math.PI*2); ctx.stroke();
+            ctx.beginPath(); ctx.arc(0,0,s*1,0,Math.PI*2); ctx.stroke(); break;
+        }
+        ctx.restore();
+      }
+      update() {
+        this.x += this.vx; this.y += this.vy;
+        this.life++; this.rotation += this.rotSpeed;
+        // Mouse repulsion (subtle)
+        const mpy = mouseY + scrollY;
+        const dx = this.x - mouseX, dy = this.y - mpy;
+        const md = Math.sqrt(dx*dx+dy*dy);
+        if (md < 100) {
+          this.vx += (dx/md) * .015;
+          this.vy += (dy/md) * .015;
+        }
+        if (this.life > this.maxLife || this.y < -30) this.reset();
+      }
+    }
+
+    // ── Scroll-burst shapes ──
+    class ScrollShape {
+      constructor(scrollVel) {
+        this.x = Math.random() * w;
+        this.y = -20 + scrollY % h;
+        const speed = Math.abs(scrollVel) * .4;
+        const dir = scrollVel > 0 ? 1 : -1;
+        this.vx = (Math.random() - .5) * speed * 2;
+        this.vy = dir * (Math.random() * speed + 1.5);
+        this.size = Math.random() * 6 + 3;
+        this.rotation = Math.random() * Math.PI * 2;
+        this.rotSpeed = (Math.random() - .5) * .08;
+        this.life = 0; this.maxLife = Math.random() * 80 + 40;
+        this.type = ['tri','diamond','cross','ring','hex'][Math.floor(Math.random()*5)];
+        const cols = ['rgba(0,200,255','rgba(139,92,246','rgba(20,241,149','rgba(244,114,182','rgba(251,191,36'];
+        this.color = cols[Math.floor(Math.random()*cols.length)];
+        this.scale = 1;
+      }
+      draw() {
+        const progress = this.life / this.maxLife;
+        const a = (1 - progress) * .9;
+        const s = this.size * (1 + progress * 1.5); // expand as it fades
+        ctx.save();
+        const py = this.y - scrollY * .1;
+        ctx.translate(this.x, py);
+        ctx.rotate(this.rotation);
+        ctx.strokeStyle = `${this.color},${a})`;
+        ctx.fillStyle   = `${this.color},${a*.08})`;
+        ctx.lineWidth = 1.2;
+        switch(this.type) {
+          case 'tri':
+            ctx.beginPath(); ctx.moveTo(0,-s*1.8); ctx.lineTo(s*1.6,s); ctx.lineTo(-s*1.6,s); ctx.closePath();
+            ctx.stroke(); ctx.fill(); break;
+          case 'diamond':
+            ctx.beginPath(); ctx.moveTo(0,-s*2); ctx.lineTo(s*1.4,0); ctx.lineTo(0,s*2); ctx.lineTo(-s*1.4,0); ctx.closePath();
+            ctx.stroke(); ctx.fill(); break;
+          case 'cross':
+            ctx.lineWidth=1.5;
+            ctx.beginPath(); ctx.moveTo(-s,0); ctx.lineTo(s,0); ctx.moveTo(0,-s); ctx.lineTo(0,s); ctx.stroke(); break;
+          case 'ring':
+            ctx.beginPath(); ctx.arc(0,0,s,0,Math.PI*2); ctx.stroke(); break;
+          case 'hex':
+            ctx.beginPath();
+            for(let i=0;i<6;i++){const ang=i*Math.PI/3;ctx.lineTo(Math.cos(ang)*s*1.2,Math.sin(ang)*s*1.2);}
+            ctx.closePath(); ctx.stroke(); break;
+        }
+        ctx.restore();
+      }
+      update() {
+        this.x += this.vx; this.vy *= .96; this.vx *= .98;
+        this.life++; this.rotation += this.rotSpeed;
+      }
+      isDead() { return this.life > this.maxLife; }
+    }
+
+    // ── Large slow background shapes (parallax layers) ──
+    const BIG_SHAPES = Array.from({length: 12}, (_, i) => ({
+      x: Math.random() * 1600 - 200,
+      y: Math.random() * 4000,
+      size: Math.random() * 60 + 20,
+      type: ['tri','diamond','hex','ring'][i%4],
+      color: ['rgba(0,200,255','rgba(139,92,246','rgba(20,241,149','rgba(244,114,182'][i%4],
+      rotation: Math.random() * Math.PI * 2,
+      rotSpeed: (Math.random() - .5) * .003,
+      layer: .1 + Math.random() * .4, // parallax depth
+      alpha: .025 + Math.random() * .04,
+    }));
+
+    const drawBigShapes = () => {
+      BIG_SHAPES.forEach(sh => {
+        sh.rotation += sh.rotSpeed;
+        const py = sh.y - scrollY * sh.layer;
+        if (py < -200 || py > h + 200) return;
+        ctx.save();
+        ctx.translate(sh.x * (w/1600), py);
+        ctx.rotate(sh.rotation);
+        ctx.strokeStyle = `${sh.color},${sh.alpha})`;
+        ctx.fillStyle   = `${sh.color},${sh.alpha*.3})`;
+        ctx.lineWidth = 1;
+        const s = sh.size;
+        switch(sh.type) {
+          case 'tri':
+            ctx.beginPath(); ctx.moveTo(0,-s*1.7); ctx.lineTo(s*1.5,s*.85); ctx.lineTo(-s*1.5,s*.85); ctx.closePath();
+            ctx.stroke(); ctx.fill(); break;
+          case 'diamond':
+            ctx.beginPath(); ctx.moveTo(0,-s*2); ctx.lineTo(s*1.3,0); ctx.lineTo(0,s*2); ctx.lineTo(-s*1.3,0); ctx.closePath();
+            ctx.stroke(); ctx.fill(); break;
+          case 'hex':
+            ctx.beginPath();
+            for(let i=0;i<6;i++){const a=i*Math.PI/3; ctx.lineTo(Math.cos(a)*s,Math.sin(a)*s);}
+            ctx.closePath(); ctx.stroke(); ctx.fill(); break;
+          case 'ring':
+            ctx.beginPath(); ctx.arc(0,0,s,0,Math.PI*2); ctx.stroke();
+            ctx.beginPath(); ctx.arc(0,0,s*.55,0,Math.PI*2); ctx.stroke(); break;
+        }
+        ctx.restore();
+      });
+    };
+
+    // Connection lines between close particles
+    const drawConnections = () => {
+      for (let i = 0; i < Math.min(particles.length, 40); i++) {
+        for (let j = i+1; j < Math.min(particles.length, 40); j++) {
+          const dx = particles[i].x - particles[j].x;
+          const pyi = particles[i].y - scrollY * particles[i].layer * .08;
+          const pyj = particles[j].y - scrollY * particles[j].layer * .08;
+          const dy = pyi - pyj;
+          const d = Math.sqrt(dx*dx + dy*dy);
+          if (d < 100) {
+            const a = (1 - d/100) * .07;
+            ctx.strokeStyle = `rgba(0,200,255,${a})`;
+            ctx.lineWidth = .4;
+            ctx.beginPath(); ctx.moveTo(particles[i].x, pyi); ctx.lineTo(particles[j].x, pyj); ctx.stroke();
+          }
+        }
+      }
+    };
+
+    for (let i = 0; i < 90; i++) particles.push(new P());
+
+    const loop = () => {
+      ctx.clearRect(0, 0, w, h);
+      drawBigShapes();
+      drawConnections();
+      particles.forEach(p => { p.update(); p.draw(); });
+      // Scroll burst shapes
+      scrollShapes = scrollShapes.filter(s => !s.isDead());
+      scrollShapes.forEach(s => { s.update(); s.draw(); });
+      raf = requestAnimationFrame(loop);
+    };
+    loop();
+
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener('resize', resize);
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('mousemove', onMouseMove);
+    };
+  }, []);
+}
+
+/* ── JOURNEY CAROUSEL ────────────────────────────────────────────── */
+function JourneyCarousel({ slides }) {
+  const [cur, setCur] = useState(0);
+  const timer = useRef(null);
+  const n = slides.length;
+  const go = useCallback((i) => setCur((i + n) % n), [n]);
+
+  useEffect(() => {
+    if (n <= 1) return;
+    timer.current = setInterval(() => setCur(c => (c + 1) % n), 5000);
+    return () => clearInterval(timer.current);
+  }, [n]);
+
+  if (!n) return null;
+  return (
+    <div>
+      <div className="h-carousel">
+        <div className="h-c-track" style={{ transform:`translateX(-${cur*100}%)` }}>
+          {slides.map((s, i) => (
+            <div key={s._id || i} className={`h-c-slide ${i===cur?'active':''}`}>
+              <img src={s.imageUrl} alt={s.title||''} loading="lazy"/>
+              <div className="h-c-overlay"/>
+              {(s.title||s.description) && (
+                <div className="h-c-info">
+                  {s.title && <h3>{s.title}</h3>}
+                  {s.description && <p>{s.description}</p>}
+                  {n > 1 && (
+                    <div className="h-c-nav">
+                      <button className="h-c-arr" onClick={()=>go(cur-1)}>←</button>
+                      <button className="h-c-arr" onClick={()=>go(cur+1)}>→</button>
+                    </div>
+                  )}
+                </div>
+              )}
+              {!s.title && !s.description && n > 1 && (
+                <div className="h-c-info">
+                  <div className="h-c-nav">
+                    <button className="h-c-arr" onClick={()=>go(cur-1)}>←</button>
+                    <button className="h-c-arr" onClick={()=>go(cur+1)}>→</button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+      {n > 1 && (
+        <div className="h-c-dots">
+          {slides.map((_,i) => <div key={i} className={`h-c-dot${i===cur?' active':''}`} onClick={()=>go(i)}/>)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── COURSE CARD ─────────────────────────────────────────────────── */
+function CourseCard({ course, delay=0, onShare }) {
+  const navigate = useNavigate();
+  return (
+    <div className={`h-course h-fade d${delay}`}
+      onClick={()=>navigate(course.price>0?`/courses/premium/${course.slug}`:`/courses/${course.slug}`)}>
+      <div className="h-c-thumb">
+        {course.thumbnail
+          ? <img src={course.thumbnail} alt={course.title}/>
+          : <div className="h-c-ph">{course.categoryIcon||''}</div>}
+        {course.price>0 && (
+          <button className="h-share" onClick={e=>onShare(course,e)} title="Copy link">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+            </svg>
+          </button>
+        )}
+      </div>
+      <div className="h-c-body">
+        <div className="h-c-meta">
+          {course.categoryLabel && <span className="h-badge h-badge-cat">{course.categoryLabel}</span>}
+          {course.level && <span className="h-badge h-badge-lvl">{course.level}</span>}
+        </div>
+        <div className="h-c-title">{course.title}</div>
+        <div className="h-c-desc">{course.description}</div>
+        <div className="h-c-footer">
+          <div className="h-trainer">
+            {course.trainer?.photo
+              ? <img src={course.trainer.photo} alt={course.trainer.name}/>
+              : course.trainer?.name ? <div className="h-trainer-ph">{course.trainer.name[0]}</div> : null}
+            {course.trainer?.name||''}
+          </div>
+          {course.price===0
+            ? <span className="h-free">FREE</span>
+            : <span className="h-price">₹{course.price?.toLocaleString('en-IN')}</span>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── WORKSHOP CARD ───────────────────────────────────────────────── */
+function WorkshopCard({ w, onClick }) {
+  const d = new Date(w.scheduledAt);
+  return (
+    <div className="h-ws" onClick={onClick}>
+      {w.bannerImage
+        ? <img className="h-ws-img" src={w.bannerImage} alt={w.title}/>
+        : <div className="h-ws-ph">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="rgba(0,200,255,.3)" strokeWidth="1.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          </div>}
+      <div className="h-ws-body">
+        <div className="h-ws-top">
+          <span className="h-live-badge"><span className="h-live-dot"/>LIVE</span>
+          <span className="h-ws-date">{d.toLocaleDateString('en-IN',{day:'numeric',month:'short'})} · {d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})}</span>
+        </div>
+        <div className="h-ws-title">{w.title}</div>
+        <div className="h-ws-desc">{w.description}</div>
+        <button className="h-btn h-btn-ghost h-btn-sm">Join Session →</button>
+      </div>
+    </div>
+  );
+}
+
+/* ── 3D HERO VISUAL ─────────────────────────────────────────────── */
+function Hero3D() {
+  const shapes = useMemo(() => [
+    {style:{top:'10%',left:'6%',color:'rgba(0,200,255,.5)',animationDuration:'11s'}},
+    {style:{top:'60%',right:'4%',color:'rgba(139,92,246,.5)',animationDuration:'14s',animationDelay:'2s'}},
+    {style:{bottom:'12%',left:'14%',color:'rgba(20,241,149,.45)',animationDuration:'9s',animationDelay:'1s'}},
+    {style:{top:'35%',right:'10%',color:'rgba(244,114,182,.45)',animationDuration:'12s',animationDelay:'3s'}},
+    {style:{bottom:'35%',right:'20%',color:'rgba(251,191,36,.4)',animationDuration:'16s',animationDelay:'.5s'}},
+    {style:{top:'20%',right:'30%',color:'rgba(0,200,255,.35)',animationDuration:'13s',animationDelay:'2.5s'}},
+  ], []);
+
+  return (
+    <div className="h3d-scene">
+      {/* Floating data boxes */}
+      <div className="h3d-databox db1">
+        <div className="db-label">Threat Level</div>
+        <div className="db-val">SECURE</div>
+        <div className="db-bar"><div className="db-fill" style={{background:'var(--teal)'}}/></div>
+      </div>
+      <div className="h3d-databox db2">
+        <div className="db-label">Active Learners</div>
+        <div className="db-val">2,847</div>
+        <div className="db-bar"><div className="db-fill" style={{background:'var(--purple)'}}/></div>
+      </div>
+      <div className="h3d-databox db3">
+        <div className="db-label">Uptime</div>
+        <div className="db-val">99.97%</div>
+        <div className="db-bar"><div className="db-fill" style={{background:'var(--teal)'}}/></div>
+      </div>
+      <div className="h3d-databox db4">
+        <div className="db-label">Labs Running</div>
+        <div className="db-val">SOC · AWS · K8s</div>
+        <div className="db-bar"><div className="db-fill" style={{background:'var(--pink)'}}/></div>
+      </div>
+
+      {/* 3D Stage with cube + rings */}
+      <div className="h3d-stage" style={{animation:'stageRotY 30s linear infinite'}}>
+
+        {/* Orbiting rings */}
+        <div className="h3d-ring ring1">
+          <div className="ring-dot rd1"/>
+          <div className="ring-dot rd2"/>
+          <div className="ring-dot rd3"/>
+        </div>
+        <div className="h3d-ring ring2"/>
+        <div className="h3d-ring ring3"/>
+
+        {/* Central cube */}
+        <div className="h3d-cube">
+          <div className="h3d-face h3d-face-front">
+            <div className="face-front-glow"/>
+          </div>
+          <div className="h3d-face h3d-face-back"/>
+          <div className="h3d-face h3d-face-left"/>
+          <div className="h3d-face h3d-face-right"/>
+          <div className="h3d-face h3d-face-top" style={{background:'rgba(0,200,255,.08)'}}/>
+          <div className="h3d-face h3d-face-bottom"/>
+        </div>
+      </div>
+
+      {/* Floating geometric shapes around the scene */}
+      <div className="h3d-shapes">
+        {shapes.map((sh, i) => (
+          <div key={i} style={{
+            position:'absolute', ...sh.style,
+            animation:`triSpin ${sh.style.animationDuration||'12s'} ${sh.style.animationDelay||'0s'} linear infinite`,
+          }}>
+            {i % 3 === 0 && (
+              <div style={{
+                width:0, height:0,
+                borderLeft:'18px solid transparent', borderRight:'18px solid transparent',
+                borderBottom:`32px solid ${sh.style.color}`,
+                filter:`drop-shadow(0 0 8px ${sh.style.color})`,
+              }}/>
+            )}
+            {i % 3 === 1 && (
+              <div style={{
+                width:28, height:28,
+                border:`1.5px solid ${sh.style.color}`,
+                transform:'rotate(45deg)',
+                boxShadow:`0 0 12px ${sh.style.color}`,
+              }}/>
+            )}
+            {i % 3 === 2 && (
+              <div style={{
+                width:24, height:24, borderRadius:'50%',
+                border:`1.5px solid ${sh.style.color}`,
+                boxShadow:`0 0 12px ${sh.style.color}, inset 0 0 8px ${sh.style.color}`,
+              }}/>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Glitch scan line effect */}
+      <div className="h3d-glitch" style={{position:'absolute',inset:0,pointerEvents:'none',overflow:'hidden',borderRadius:8}}>
+        {[0,1,2].map(i=>(
+          <div key={i} className="glitch-line" style={{
+            animationDuration:`${3+i*1.5}s`, animationDelay:`${i*1.2}s`,
+            height:`${1+i*.5}px`, opacity:.4,
+          }}/>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function BannerCTA({ href, label, style }) {
+  if (!href || !label) return null;
+  return <a href={href} target="_blank" rel="noopener noreferrer" style={style}>{label}</a>;
+}
+
+function ActiveBanner({ banner, dismissed, onDismiss }) {
+  if (!banner || dismissed) return null;
+
+  const primaryHref = banner.ctaUrl || banner.linkUrl || '';
+  const primaryLabel = banner.ctaText || banner.linkText || '';
+
+  if (banner.type === 'popup') {
+    return (
+      <div onClick={onDismiss} style={{ position:'fixed', inset:0, zIndex:10000, background:'rgba(2,4,8,.78)', display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
+        <div onClick={e => e.stopPropagation()} style={{ width:'min(680px, 100%)', background:banner.bgColor||'#09111f', color:banner.textColor||'#e0f0ff', border:'1px solid rgba(0,200,255,.2)', borderRadius:24, boxShadow:'0 30px 80px rgba(0,0,0,.45)', overflow:'hidden', position:'relative' }}>
+          <button onClick={onDismiss} style={{ position:'absolute', top:16, right:16, width:36, height:36, borderRadius:'50%', border:'1px solid rgba(255,255,255,.14)', background:'rgba(2,4,8,.55)', color:'#fff', cursor:'pointer', fontSize:16, zIndex:1 }}>✕</button>
+          {banner.imageUrl && <img src={banner.imageUrl} alt={banner.headline || 'Banner'} style={{ width:'100%', maxHeight:280, objectFit:'cover', display:'block' }} />}
+          <div style={{ padding:'28px 28px 30px' }}>
+            <div style={{ fontSize:12, letterSpacing:'.18em', textTransform:'uppercase', color:'rgba(255,255,255,.68)', marginBottom:12 }}>Featured update</div>
+            <h2 style={{ fontSize:'clamp(28px, 5vw, 42px)', lineHeight:1.05, marginBottom:14, fontFamily:'Orbitron, monospace' }}>{banner.headline || banner.message || 'Latest from Pragni'}</h2>
+            {(banner.subtext || banner.message) && <p style={{ fontSize:15, lineHeight:1.7, color:'rgba(255,255,255,.82)', marginBottom:22 }}>{banner.subtext || banner.message}</p>}
+            <div style={{ display:'flex', gap:12, flexWrap:'wrap', alignItems:'center' }}>
+              <BannerCTA href={primaryHref} label={primaryLabel} style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', minWidth:160, padding:'14px 24px', borderRadius:999, textDecoration:'none', fontWeight:700, background:banner.ctaBgColor||'#00c8ff', color:banner.ctaTextColor||'#020408' }} />
+              <BannerCTA href={banner.secondaryUrl} label={banner.secondaryText} style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', minWidth:140, padding:'14px 20px', borderRadius:999, textDecoration:'none', fontWeight:600, border:'1px solid rgba(255,255,255,.16)', color:banner.textColor||'#e0f0ff', background:'rgba(255,255,255,.04)' }} />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ position:'fixed', top:0, left:0, right:0, zIndex:9999, background:banner.bgColor||'#0a1628', color:banner.textColor||'#e0f0ff', padding:'10px 50px 10px 20px', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:500, minHeight:44, borderBottom:'1px solid rgba(0,200,255,.2)' }}>
+      <span style={{ textAlign:'center', display:'flex', alignItems:'center', gap:14, flexWrap:'wrap', justifyContent:'center' }}>
+        {banner.imageUrl && <img src={banner.imageUrl} alt={banner.message || banner.headline || 'Banner'} style={{ maxHeight:28, maxWidth:180, objectFit:'contain' }} />}
+        <span>{banner.message || banner.headline || ''}</span>
+        <BannerCTA href={primaryHref} label={primaryLabel} style={{ padding:'4px 14px', background:banner.ctaBgColor||'rgba(0,200,255,.2)', color:banner.ctaTextColor||'#00c8ff', borderRadius:3, fontSize:11, fontWeight:700, textDecoration:'none', fontFamily:'Orbitron,monospace', letterSpacing:'.06em' }} />
+      </span>
+      <button onClick={onDismiss} style={{ position:'absolute', top:'50%', right:14, transform:'translateY(-50%)', background:'rgba(0,200,255,.08)', border:'1px solid rgba(0,200,255,.2)', color:'#6b8aaa', cursor:'pointer', width:28, height:28, borderRadius:3, display:'flex', alignItems:'center', justifyContent:'center', fontSize:13 }}>✕</button>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   HOME PAGE
+══════════════════════════════════════════════════════════════════ */
+export default function Home() {
+  useMeta({ pageKey:'home', description:'Pragni — Free cybersecurity, cloud and pentesting courses. AWS, Azure, SOC, Pentesting and more.' });
+
+  const canvasRef = useRef(null);
+  useParticles(canvasRef);
+
+  const [courses,    setCourses]    = useState([]);
+  const [workshops,  setWorkshops]  = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [banner,     setBanner]     = useState(null);
+  const [journey,    setJourney]    = useState([]);
+  const [team,       setTeam]       = useState([]);
+  const [sc,         setSc]         = useState({});
+  const [shareToast, setShareToast] = useState(false);
+  const [selWS,      setSelWS]      = useState(null);
+  const [joinForm,   setJoinForm]   = useState({name:'',email:'',mobile:''});
+  const [joinLoad,   setJoinLoad]   = useState(false);
+  const [joinResult, setJoinResult] = useState(null);
+  const [joinErr,    setJoinErr]    = useState('');
+  const [bannerDismissed, _setDismiss] = useState(()=>sessionStorage.getItem('banner-dismissed')==='1');
+  const setDismiss = v => { if(v) sessionStorage.setItem('banner-dismissed','1'); else sessionStorage.removeItem('banner-dismissed'); _setDismiss(v); };
+
+  const cv = (key, fallback) => sc[key] || fallback;
+
+  useEffect(()=>{
+    if(!document.getElementById('h3d-styles')){
+      const el=document.createElement('style'); el.id='h3d-styles'; el.textContent=STYLES; document.head.appendChild(el);
+    }
+  },[]);
+
+  const fetchBanner = () => fetch('/api/banner/active',{cache:'no-store'}).then(r=>r.json()).then(d=>{setBanner(d.banner||null);if(!d.banner)setDismiss(false);}).catch(()=>{});
+
+  useEffect(()=>{
+    getCourses().then(r=>setCourses(r.data.courses||[])).catch(()=>{});
+    getWorkshops().then(r=>setWorkshops(r.data.workshops||[])).catch(()=>{});
+    fetch('/api/categories/public').then(r=>r.json()).then(d=>setCategories(d.categories||[])).catch(()=>{});
+    fetch('/api/journey').then(r=>r.json()).then(d=>setJourney(d.slides||[])).catch(()=>{});
+    fetch('/api/team').then(r=>r.json()).then(d=>setTeam(d.members||[])).catch(()=>{});
+    fetch('/api/site-content').then(r=>r.json()).then(d=>setSc(d.content||{})).catch(()=>{});
+    fetchBanner();
+    const onBanner=()=>{sessionStorage.removeItem('banner-dismissed');fetchBanner();};
+    const onContent=()=>fetch('/api/site-content').then(r=>r.json()).then(d=>setSc(d.content||{})).catch(()=>{});
+    window.addEventListener('banner-updated',onBanner);
+    window.addEventListener('site-content-updated',onContent);
+    return()=>{window.removeEventListener('banner-updated',onBanner);window.removeEventListener('site-content-updated',onContent);};
+  },[]); // eslint-disable-line
+
+  const handleJoin = async e => {
+    e.preventDefault(); setJoinLoad(true); setJoinErr('');
+    try { const r=await joinWorkshop(selWS._id,joinForm); setJoinResult(r.data.meetUrl); }
+    catch(err){ setJoinErr(err.response?.data?.error||'Something went wrong.'); }
+    setJoinLoad(false);
+  };
+  const closeModal=()=>{setSelWS(null);setJoinResult(null);setJoinErr('');setJoinForm({name:'',email:'',mobile:''});};
+
+  const shareCourse=(course,e)=>{
+    e.stopPropagation();
+    const url=`${window.location.origin}/courses/premium/${course.slug}`;
+    if(navigator.clipboard) navigator.clipboard.writeText(url);
+    setShareToast(true); setTimeout(()=>setShareToast(false),2200);
+  };
+
+  const free    = courses.filter(c=>c.price===0);
+  const premium = courses.filter(c=>c.price>0);
+  const learningSignals = [
+    { kicker:'Outcome-first', title:'Job-ready learning paths', text:'Each track is organised so beginners can start quickly and grow into hands-on cloud and cyber roles.', chip:'Clear progression' },
+    { kicker:'Practice-heavy', title:'Real labs, not just theory', text:'Learners move from guided lessons to workshops, projects and premium mentorship without losing momentum.', chip:'Hands-on from day one' },
+    { kicker:'Community-led', title:'Built for serious learners', text:'Pragni blends free access with structured support so students can keep moving even when budgets are tight.', chip:'Affordable + accessible' },
+    { kicker:'Career support', title:'Confidence before interviews', text:'From foundations to advanced practice, the experience is designed to help students explain what they know clearly.', chip:'Portfolio mindset' },
+  ];
+  const roadmapSteps = [
+    { title:'Start with free foundations', text:'Pick a role path, learn the basics, and build consistency with short lessons you can actually complete.' },
+    { title:'Join live sessions', text:'Use workshops to ask questions, see workflows in action, and stay accountable with the community.' },
+    { title:'Go deeper with premium tracks', text:'Move into structured programs when you want projects, mentorship, certification and guided outcomes.' },
+  ];
+
+  return (
+    <>
+      <ActiveBanner banner={banner} dismissed={bannerDismissed} onDismiss={() => setDismiss(true)} />
+
+      <div className="home">
+        {/* ── CANVAS PARTICLES ── */}
+        <canvas ref={canvasRef} id="h3d-canvas"/>
+        {/* ── OVERLAYS ── */}
+        <div className="h-scanlines"/>
+        <div className="h-grain"/>
+
+        <div className="h-inner">
+
+          {/* ══ HERO ══ */}
+          <section className="h-hero">
+            <div className="h-wrap">
+              <div className="h-hero-layout">
+                {/* LEFT */}
+                <div>
+                  <div className="h-eyebrow h-fade d1">
+                    <div className="h-eb-pulse"/>
+                    {cv('hero_eyebrow','Cybersecurity · Cloud · Pentesting')}
+                  </div>
+                  <h1 className="h-title h-fade d2">
+                    <span className="h-t-white">{cv('hero_title_line1','LEARN')}</span>
+                    <span className="h-t-neon">{cv('hero_title_gradient','CYBERSECURITY')}</span>
+                    <span className="h-t-outline">&amp; {cv('hero_title_line2','CLOUD.')}</span>
+                  </h1>
+                  <p className="h-desc h-fade d3">{cv('hero_description','Pragni is built to make world-class tech skills accessible to everyone. AWS, Azure, SOC, Pentesting, Networking — free and affordable, always.')}</p>
+                  <div className="h-ctas h-fade d4">
+                    <Link to="/courses" className="h-btn h-btn-primary">Start Learning →</Link>
+                    <Link to="/workshops" className="h-btn h-btn-ghost">Live Workshops</Link>
+                  </div>
+                  <div className="h-stats h-fade d5">
+                    {[[cv('stat1_num','8+'),cv('stat1_lbl','Course Tracks')],[cv('stat2_num','100%'),cv('stat2_lbl','Free To Start')],[cv('stat3_num','Live'),cv('stat3_lbl','Weekly Sessions')],[cv('stat4_num','₹0'),cv('stat4_lbl','Hidden Fees')]].map(([n,l])=>(
+                      <div key={l} className="h-stat">
+                        <span className="h-snum">{n}</span>
+                        <span className="h-slbl">{l}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                {/* RIGHT — 3D VISUAL */}
+                <Hero3D/>
+              </div>
+            </div>
+          </section>
+
+          <div className="h-hr"/>
+
+          <section className="h-sec">
+            <div className="h-wrap">
+              <div className="h-sec-head">
+                <div className="h-sec-kicker">Why Pragni Works</div>
+                <h2>A sharper ed-tech experience for focused learners</h2>
+                <p>Designed to feel premium, stay simple on mobile, and guide students from curiosity to confident execution.</p>
+              </div>
+              <div className="h-value-grid">
+                {learningSignals.map((item, i) => (
+                  <div key={item.title} className={`h-value-card h-fade d${Math.min(i + 1, 5)}`}>
+                    <div className="h-value-kicker"><span className="h-value-dot"/>{item.kicker}</div>
+                    <h3>{item.title}</h3>
+                    <p>{item.text}</p>
+                    <span className="h-value-chip">{item.chip}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          <div className="h-hr"/>
+
+          {/* ══ CATEGORIES ══ */}
+          {categories.length>0 && (
+            <section className="h-sec h-tint">
+              <div className="h-wrap">
+                <div className="h-sec-head">
+                  <div className="h-sec-kicker">Explore Tracks</div>
+                  <h2>What will you master?</h2>
+                  <p>Choose a discipline and follow a structured path from zero to job-ready.</p>
+                </div>
+                <div className="h-cats">
+                  {categories.map((cat,i)=>(
+                    <Link key={cat.slug} to={`/courses?category=${cat.slug}`} className={`h-cat h-fade d${Math.min(i+1,6)}`}>
+                      {cat.imageUrl
+                        ? <img src={cat.imageUrl} alt={cat.label} className="h-cat-img"/>
+                        : <span className="h-cat-icon">{cat.icon}</span>}
+                      <span className="h-cat-label">{cat.label}</span>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            </section>
+          )}
+
+          {categories.length>0 && <div className="h-hr"/>}
+
+          {/* ══ JOURNEY ══ */}
+          {journey.length>0 && (
+            <section className="h-sec">
+              <div className="h-wrap">
+                <div className="h-sec-head">
+                  <div className="h-sec-kicker">Our Story</div>
+                  <h2>{cv('journey_title','Our Journey')}</h2>
+                  <p>{cv('journey_subtitle','From a bold idea to building world-class cyber educators.')}</p>
+                </div>
+                <JourneyCarousel slides={journey}/>
+              </div>
+            </section>
+          )}
+
+          {journey.length>0 && <div className="h-hr"/>}
+
+          {/* ══ WORKSHOPS ══ */}
+          {workshops.length>0 && (
+            <section className="h-sec h-tint">
+              <div className="h-wrap">
+                <div className="h-sec-head">
+                  <div className="h-sec-kicker">Live Sessions</div>
+                  <h2>Upcoming Live Workshops</h2>
+                  <p>Real-time, hands-on instructor-led training. Join free.</p>
+                </div>
+                <div className="h-workshops">
+                  {workshops.slice(0,4).map((w,i)=>(
+                    <div key={w._id} className={`h-fade d${Math.min(i+1,4)}`}>
+                      <WorkshopCard w={w} onClick={()=>{setSelWS(w);setJoinResult(null);}}/>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </section>
+          )}
+
+          {workshops.length>0 && <div className="h-hr"/>}
+
+          {/* ══ PREMIUM COURSES ══ */}
+          {premium.length>0 && (
+            <section className="h-sec">
+              <div className="h-wrap">
+                <div className="h-sec-head">
+                  <div className="h-sec-kicker">Premium</div>
+                  <h2>Premium Courses</h2>
+                  <p>Structured programs with mentorship, projects and certification. Industry-priced, not Wall Street-priced.</p>
+                </div>
+                <div className="h-courses">
+                  {premium.slice(0,3).map((c,i)=>(
+                    <CourseCard key={c._id} course={c} delay={Math.min(i+1,5)} onShare={shareCourse}/>
+                  ))}
+                </div>
+                {premium.length>3 && (
+                  <div style={{textAlign:'center',marginTop:44}}>
+                    <Link to="/courses" className="h-btn h-btn-ghost">View All Premium →</Link>
+                  </div>
+                )}
+              </div>
+            </section>
+          )}
+
+          {premium.length>0 && free.length>0 && <div className="h-hr"/>}
+
+          {/* ══ FREE COURSES ══ */}
+          {free.length>0 && (
+            <section className="h-sec h-tint">
+              <div className="h-wrap">
+                <div className="h-sec-head">
+                  <div className="h-sec-kicker">Free Access</div>
+                  <h2>Free Courses — Start Now</h2>
+                  <p>No sign-up. No paywall. Just click and learn.</p>
+                </div>
+                <div className="h-courses">
+                  {free.slice(0,6).map((c,i)=>(
+                    <CourseCard key={c._id} course={c} delay={Math.min(i+1,5)} onShare={shareCourse}/>
+                  ))}
+                </div>
+                {free.length>6 && (
+                  <div style={{textAlign:'center',marginTop:44}}>
+                    <Link to="/courses" className="h-btn h-btn-ghost">View All Free Courses →</Link>
+                  </div>
+                )}
+              </div>
+            </section>
+          )}
+
+          <div className="h-hr"/>
+
+          {/* ══ TEAM ══ */}
+          {team.length>0 && (
+            <section className="h-sec">
+              <div className="h-wrap">
+                <div className="h-sec-head">
+                  <div className="h-sec-kicker">The People</div>
+                  <h2>{cv('team_title','Meet Our Team')}</h2>
+                  <p>{cv('team_subtitle','Security professionals and educators building Pragni.')}</p>
+                </div>
+                <div className="h-team">
+                  {team.map((m,i)=>(
+                    <div key={m._id} className={`h-tm h-fade d${Math.min(i+1,5)}`}>
+                      {m.photo
+                        ? <img src={m.photo} alt={m.name} className="h-tm-photo"/>
+                        : <div className="h-tm-ph">{m.name?.[0]?.toUpperCase()}</div>}
+                      <div className="h-tm-name">{m.name}</div>
+                      <div className="h-tm-role">{m.role}</div>
+                      {m.bio&&<div className="h-tm-bio">{m.bio}</div>}
+                      {(m.linkedin||m.twitter)&&(
+                        <div className="h-tm-links">
+                          {m.linkedin&&<a href={m.linkedin} target="_blank" rel="noopener noreferrer" className="h-tm-link" title="LinkedIn">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+                          </a>}
+                          {m.twitter&&<a href={m.twitter} target="_blank" rel="noopener noreferrer" className="h-tm-link" title="Twitter">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                          </a>}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </section>
+          )}
+
+          <div className="h-hr"/>
+
+          <section className="h-sec">
+            <div className="h-wrap">
+              <div className="h-sec-head">
+                <div className="h-sec-kicker">Learning Flow</div>
+                <h2>How students move through Pragni</h2>
+                <p>A cleaner journey helps learners understand what to do next, whether they are starting free or stepping into premium mentorship.</p>
+              </div>
+              <div className="h-roadmap">
+                <div className="h-roadmap-panel">
+                  <h3>From first lesson to real-world confidence</h3>
+                  <p>We removed the oversized home-page video banner and replaced it with a simpler roadmap that gives students clear direction, better focus and faster navigation on desktop and mobile.</p>
+                  <div className="h-roadmap-points">
+                    {roadmapSteps.map((step, index) => (
+                      <div key={step.title} className="h-roadmap-point">
+                        <div className="h-roadmap-step">0{index + 1}</div>
+                        <div>
+                          <strong>{step.title}</strong>
+                          <span>{step.text}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="h-roadmap-card">
+                  <div className="h-roadmap-mini">
+                    <small>For beginners</small>
+                    <strong>Low-friction starting point</strong>
+                    <p>Free courses, visible categories and short next-step choices reduce confusion on the first visit.</p>
+                  </div>
+                  <div className="h-roadmap-mini">
+                    <small>For active learners</small>
+                    <strong>Live momentum loops</strong>
+                    <p>Workshops and premium programs sit closer to the core discovery flow, so students know how to progress.</p>
+                  </div>
+                  <div className="h-roadmap-mini">
+                    <small>For mobile users</small>
+                    <strong>Cleaner hierarchy</strong>
+                    <p>Important actions now stay text-first and scannable, which makes the experience lighter on smaller screens.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <div className="h-hr"/>
+
+          {/* ══ MISSION ══ */}
+          <section className="h-mission">
+            <div className="h-wrap">
+              <p className="h-mission-q">"{cv('mission_quote','Every learner deserves world-class tech education. Period.')}"</p>
+              <p className="h-mission-sub">{cv('mission_text','Pragni was founded to break the paywall on cybersecurity and cloud education. Free for everyone, always.')}</p>
+              <Link to="/about" className="h-btn h-btn-ghost">Read Our Story →</Link>
+            </div>
+          </section>
+
+        </div>
+
+        {/* ══ WORKSHOP MODAL ══ */}
+        {selWS&&(
+          <div className="h-overlay" onClick={e=>e.target===e.currentTarget&&closeModal()}>
+            <div className="h-modal">
+              <div className="h-modal-hd">
+                <div>
+                  <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:10}}>
+                    <span className="h-live-badge"><span className="h-live-dot"/>LIVE</span>
+                    <span style={{fontFamily:'var(--fm)',fontSize:10,color:'var(--t2)',letterSpacing:'.06em'}}>{new Date(selWS.scheduledAt).toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'})}</span>
+                  </div>
+                  <div className="h-modal-title">{selWS.title}</div>
+                </div>
+                <button className="h-mclose" onClick={closeModal}>✕</button>
+              </div>
+              <p className="h-modal-desc">{selWS.description}</p>
+              {joinResult?(
+                <div className="h-ok">
+                  <div className="h-ok-lbl">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                    REGISTERED — JOIN VIA GOOGLE MEET
+                  </div>
+                  <a href={joinResult} target="_blank" rel="noopener noreferrer" className="h-btn h-btn-primary" style={{width:'100%',justifyContent:'center'}}>Open Google Meet →</a>
+                </div>
+              ):(
+                <form onSubmit={handleJoin}>
+                  {joinErr&&<div className="h-err">{joinErr}</div>}
+                  {[['name','Full Name','John Doe'],['email','Email','you@email.com'],['mobile','Mobile','+91 98765 43210']].map(([k,lbl,ph])=>(
+                    <div key={k} className="h-input-g">
+                      <label className="h-label">{lbl} *</label>
+                      <input type={k==='email'?'email':k==='mobile'?'tel':'text'} className="h-input" placeholder={ph} required
+                        value={joinForm[k]} onChange={e=>setJoinForm(f=>({...f,[k]:e.target.value}))}/>
+                    </div>
+                  ))}
+                  <button type="submit" className="h-btn h-btn-primary" style={{width:'100%',justifyContent:'center',marginTop:8}} disabled={joinLoad}>
+                    {joinLoad?'Getting link...':'Get Join Link →'}
+                  </button>
+                </form>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Share toast */}
+      {shareToast&&(
+        <div className="h-share-toast">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          LINK COPIED
+        </div>
+      )}
+    </>
+  );
+}
