@@ -434,6 +434,190 @@ textarea.input { resize: vertical; min-height: 100px; }
 .delay-3 { animation-delay: 0.3s; }
 .delay-4 { animation-delay: 0.4s; }
 
+/* ── ENTERPRISE SECOND-PASS DESIGN TOKENS (PUBLIC PAGES) ───── */
+:root {
+  --ds-font-display: 'Clash Display', 'Cabinet Grotesk', sans-serif;
+  --ds-font-body: 'Plus Jakarta Sans', 'Cabinet Grotesk', sans-serif;
+  --ds-space-1: 8px;
+  --ds-space-2: 12px;
+  --ds-space-3: 16px;
+  --ds-space-4: 20px;
+  --ds-space-5: 28px;
+  --ds-space-6: 36px;
+  --ds-space-7: 52px;
+  --ds-space-8: 72px;
+  --ds-radius-sm: 12px;
+  --ds-radius-md: 16px;
+  --ds-radius-lg: 22px;
+  --ds-radius-xl: 28px;
+  --ds-blur: 16px;
+  --ds-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --ds-ease-soft: cubic-bezier(0.4, 0, 0.2, 1);
+  --ds-card-bg: color-mix(in srgb, var(--bg2) 72%, transparent);
+  --ds-card-border: color-mix(in srgb, var(--border2) 75%, transparent);
+  --ds-card-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
+  --ds-hover-shadow: 0 30px 80px rgba(0, 0, 0, 0.34);
+}
+
+/* Shared page shell typography */
+.h-pg,
+.cs-root,
+.contact-wrap,
+.misc-root,
+.cd-root,
+.pcd-root,
+.player-layout {
+  font-family: var(--ds-font-body) !important;
+}
+
+/* Shared heading rhythm */
+.h-h1,
+.h-sec-h2,
+.cs-title,
+.misc-hero-title,
+.misc-section-head h2,
+.player-course-title,
+.pcd-title,
+.contact-hero h1 {
+  font-family: var(--ds-font-display) !important;
+  letter-spacing: -0.03em !important;
+}
+
+/* Unified section spacing */
+.h-sec,
+.misc-section,
+.cs-header,
+.cs-filters,
+.pcd-hero,
+.contact-wrap {
+  padding-top: var(--ds-space-8) !important;
+}
+.h-sec,
+.misc-section,
+.pcd-hero,
+.contact-wrap {
+  padding-bottom: var(--ds-space-8) !important;
+}
+
+/* Unified glass card treatment */
+.h-feat,
+.h-panel,
+.cs-card,
+.c-card,
+.workshop-banner,
+.trainer-card,
+.pcd-enroll-card,
+.pcd-section,
+.comment-form,
+.comment-item,
+.player-info,
+.player-tabs,
+.sidebar-header,
+.ws-modal {
+  background: var(--ds-card-bg) !important;
+  border: 1px solid var(--ds-card-border) !important;
+  border-radius: var(--ds-radius-lg) !important;
+  backdrop-filter: blur(var(--ds-blur)) saturate(120%) !important;
+  -webkit-backdrop-filter: blur(var(--ds-blur)) saturate(120%) !important;
+  box-shadow: var(--ds-card-shadow) !important;
+}
+
+/* Unified card elevation motion */
+.h-feat,
+.cs-card,
+.workshop-banner,
+.trainer-card,
+.pcd-section,
+.pcd-enroll-card,
+.h-cat {
+  transition: transform 0.3s var(--ds-ease), box-shadow 0.3s var(--ds-ease), border-color 0.3s var(--ds-ease) !important;
+}
+.h-feat:hover,
+.cs-card:hover,
+.workshop-banner:hover,
+.trainer-card:hover,
+.pcd-section:hover,
+.pcd-enroll-card:hover,
+.h-cat:hover {
+  transform: translateY(-6px) !important;
+  box-shadow: var(--ds-hover-shadow) !important;
+  border-color: color-mix(in srgb, var(--accent2) 44%, transparent) !important;
+}
+
+/* Unified pills/chips/tags */
+.cs-tag,
+.pcd-chip,
+.ws-tag,
+.trainer-spec-tag,
+.h-feat-chip,
+.h-badge,
+.live-badge,
+.ws-live-badge {
+  border-radius: 999px !important;
+  border: 1px solid color-mix(in srgb, var(--border2) 80%, transparent) !important;
+  background: color-mix(in srgb, var(--accent-bg) 55%, transparent) !important;
+}
+
+/* Unified interactive controls */
+.h-btn-primary,
+.h-btn-ghost,
+.cs-cat-btn,
+.cs-level-btn,
+.ws-cta-btn,
+.ws-submit-btn,
+.pcd-enroll-btn,
+.pcd-contact-btn,
+.pcd-submit,
+.c-send,
+.cd-submit-btn,
+.player-resource-btn,
+.cs-empty-btn {
+  border-radius: var(--ds-radius-md) !important;
+  transition: all 0.24s var(--ds-ease) !important;
+}
+.h-btn-primary:hover,
+.h-btn-ghost:hover,
+.ws-cta-btn:hover,
+.ws-submit-btn:hover,
+.pcd-enroll-btn:hover,
+.pcd-contact-btn:hover,
+.pcd-submit:hover,
+.c-send:hover,
+.cd-submit-btn:hover,
+.player-resource-btn:hover,
+.cs-empty-btn:hover {
+  transform: translateY(-2px) !important;
+}
+
+/* Unified fields */
+.c-input,
+.ws-input,
+.pcd-input,
+.cd-input {
+  border-radius: var(--ds-radius-sm) !important;
+  border: 1px solid color-mix(in srgb, var(--border2) 85%, transparent) !important;
+  background: color-mix(in srgb, var(--bg3) 65%, transparent) !important;
+  transition: border-color 0.2s var(--ds-ease-soft), box-shadow 0.2s var(--ds-ease-soft) !important;
+}
+.c-input:focus,
+.ws-input:focus,
+.pcd-input:focus,
+.cd-input:focus {
+  border-color: color-mix(in srgb, var(--accent2) 50%, transparent) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-bg) 70%, transparent) !important;
+}
+
+/* Keep rhythm tighter on smaller screens */
+@media (max-width: 768px) {
+  .h-sec,
+  .misc-section,
+  .pcd-hero,
+  .contact-wrap {
+    padding-top: var(--ds-space-7) !important;
+    padding-bottom: var(--ds-space-7) !important;
+  }
+}
+
 /* ── RESPONSIVE ───────────────────────────────────────────── */
 @media (max-width: 1024px) {
   .player-layout { grid-template-columns: 1fr; }
