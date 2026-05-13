@@ -31,8 +31,13 @@ function App() {
           {/* Public site */}
           <Route path="/*" element={
             <div className="site-wrapper">
+              <div className="site-bg-orb site-bg-orb-1" />
+              <div className="site-bg-orb site-bg-orb-2" />
+              <div className="site-bg-orb site-bg-orb-3" />
+              <div className="site-bg-grid" />
+              <div className="site-bg-noise" />
               <Navbar />
-              <main>
+              <main className="site-main">
                 <Routes>
                   <Route path="/"                              element={<Home />} />
                    <Route path="/courses"                       element={<Courses />} />

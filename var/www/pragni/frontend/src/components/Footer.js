@@ -120,8 +120,10 @@ export default function Footer() {
 
   return (
       <footer style={{
-      background: bg,
-      borderTop: `1px solid ${borderColor}`,
+      background: 'color-mix(in srgb, var(--bg2) 86%, transparent)',
+      borderTop: `1px solid color-mix(in srgb, ${borderColor} 85%, transparent)`,
+      backdropFilter: 'blur(18px)',
+      WebkitBackdropFilter: 'blur(18px)',
       color: headColor,
       padding: '48px 0 0',
       marginTop: 'auto',
@@ -135,7 +137,7 @@ export default function Footer() {
         }}>
 
           {/* Brand */}
-          <div style={{ gridColumn: 'span 1' }}>
+          <div style={{ gridColumn: 'span 1', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', borderRadius: 14, padding: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
               {logoUrl
                 ? <img src={logoUrl} alt={brandName} style={{ height: 34, width: 'auto', objectFit: 'contain' }} />
@@ -156,7 +158,7 @@ export default function Footer() {
           </div>
 
           {/* Courses */}
-          <div>
+          <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', borderRadius: 14, padding: 16 }}>
             <h4 style={{ color: headColor, fontSize: 13, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 14 }}>
               Courses
             </h4>
@@ -176,7 +178,7 @@ export default function Footer() {
           </div>
 
           {/* Quick Links */}
-          <div>
+          <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', borderRadius: 14, padding: 16 }}>
             <h4 style={{ color: headColor, fontSize: 13, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 14 }}>
               Quick Links
             </h4>

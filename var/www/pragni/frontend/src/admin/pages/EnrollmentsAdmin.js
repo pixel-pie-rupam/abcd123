@@ -128,13 +128,23 @@ export default function EnrollmentsAdmin() {
   }, {});
   const contactedCount = enrollments.filter(e => e.contacted).length;
   const couponLeadCount = enrollments.filter(e => e.couponCode).length;
+  const fmtINR = (n) => `₹${Number(n || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
+  const computeDiscountAmount = (e) => {
+    if (e.discountAmount !== undefined && e.discountAmount !== null) return Number(e.discountAmount || 0);
+    const price = Number(e.originalPrice || e.courseId?.price || 0);
+    const value = Number(e.couponDiscount || 0);
+    if (e.couponDiscountType === 'percent') return Math.max(0, (price * value) / 100);
+    if (e.couponDiscountType === 'fixed') return Math.max(0, value);
+    return 0;
+  };
+  const couponSavingsTotal = enrollments.reduce((sum, e) => sum + computeDiscountAmount(e), 0);
 
   return (
     <div>
       <div className="adm-header">
         <div>
           <h1 className="adm-header-title">Enrollment Leads</h1>
-          <p className="adm-header-sub">{filtered.length} leads · {couponLeadCount} coupon leads · {contactedCount} contacted · {enrollments.length} total</p>
+          <p className="adm-header-sub">{filtered.length} leads · {couponLeadCount} coupon leads · {fmtINR(couponSavingsTotal)} total coupon savings · {contactedCount} contacted · {enrollments.length} total</p>
         </div>
         <button className="adm-btn adm-btn-ghost adm-btn-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }} onClick={exportCSV}>
           <DownloadIcon /> Export CSV
@@ -197,7 +207,7 @@ export default function EnrollmentsAdmin() {
                   </th>
                   <th>Student</th>
                   <th>Course</th>
-                  <th>Coupon</th>
+                  <th>Coupon & Discount</th>
                   <th>Status</th>
                   <th>Date</th>
                   <th>Actions</th>
@@ -206,6 +216,9 @@ export default function EnrollmentsAdmin() {
               <tbody>
                 {filtered.map((e) => {
                   const courseName = e.courseId?.title || e.courseName || '—';
+                  const coursePrice = Number(e.originalPrice || e.courseId?.price || 0);
+                  const discountAmount = computeDiscountAmount(e);
+                  const finalPayable = Number(e.finalPayable ?? Math.max(0, coursePrice - discountAmount));
                   const waUrl = whatsappUrl(e.mobile || e.altPhone, e.name, courseName);
                   return (
                     <tr key={e._id} style={{ opacity: e.contactStatus === 'not_interested' ? 0.55 : 1 }}>
@@ -244,9 +257,14 @@ export default function EnrollmentsAdmin() {
                         {e.couponCode
                           ? <div>
                               <span style={{ fontFamily: 'monospace', fontSize: 12, background: 'rgba(108,71,255,0.12)', color: 'var(--violet3)', padding: '2px 8px', borderRadius: 4, fontWeight: 700 }}>{e.couponCode}</span>
-                              {e.couponDiscount > 0 && <div style={{ fontSize: 11, color: 'var(--teal)', marginTop: 2 }}>
-                                -{e.couponDiscountType === 'fixed' ? `₹${e.couponDiscount}` : `${e.couponDiscount}%`}
-                              </div>}
+                              <div style={{ fontSize: 11, color: 'var(--teal)', marginTop: 3, fontWeight: 600 }}>
+                                {e.couponDiscountType === 'fixed' ? `${fmtINR(e.couponDiscount)} off` : `${e.couponDiscount || 0}% off`}
+                              </div>
+                              <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 3, lineHeight: 1.4 }}>
+                                Original: {fmtINR(coursePrice)}<br />
+                                Discount: {fmtINR(discountAmount)}<br />
+                                Payable: {fmtINR(finalPayable)}
+                              </div>
                             </div>
                           : <span style={{ color: 'var(--text3)', fontSize: 12 }}>—</span>
                         }

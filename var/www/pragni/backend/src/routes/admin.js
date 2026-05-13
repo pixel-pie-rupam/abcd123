@@ -621,9 +621,19 @@ router.get('/registrations/export/:workshopId', adminOnly, async (req, res) => {
 
 router.get('/enrollments', adminOnly, async (req, res) => {
   try {
-    const enrollments = await Enrollment.find()
+    const enrollmentsRaw = await Enrollment.find()
       .populate('courseId', 'title price')
       .sort({ createdAt: -1 });
+    const enrollments = enrollmentsRaw.map((e) => {
+      const item = e.toObject();
+      const originalPrice = Number(item.courseId?.price || 0);
+      const discountValue = Number(item.couponDiscount || 0);
+      const discountAmount = item.couponDiscountType === 'percent'
+        ? Math.max(0, (originalPrice * discountValue) / 100)
+        : (item.couponDiscountType === 'fixed' ? Math.max(0, discountValue) : 0);
+      const finalPayable = Math.max(0, originalPrice - discountAmount);
+      return { ...item, originalPrice, discountAmount, finalPayable };
+    });
     res.json({ success: true, enrollments });
   } catch {
     res.status(500).json({ error: 'Server error' });
@@ -654,13 +664,19 @@ router.get('/enrollments/export', adminOnly, async (req, res) => {
   try {
     const filter = req.query.courseId ? { courseId: req.query.courseId } : {};
     const enrollments = await Enrollment.find(filter)
-      .populate('courseId', 'title')
+      .populate('courseId', 'title price')
       .sort({ createdAt: -1 });
     const rows = [
-      'Name,Email,Mobile,Course,CouponCode,DiscountType,DiscountValue,Submitted At',
-      ...enrollments.map(e =>
-        `"${e.name}","${e.email}","${e.mobile}","${e.courseId?.title || e.courseName || ''}","${e.couponCode || ''}","${e.couponDiscountType || ''}","${e.couponDiscount || 0}","${new Date(e.createdAt).toISOString()}"`
-      ),
+      'Name,Email,Mobile,Course,OriginalPrice,CouponCode,DiscountType,DiscountValue,DiscountAmount,FinalPayable,Submitted At',
+      ...enrollments.map(e => {
+        const originalPrice = Number(e.courseId?.price || 0);
+        const discountValue = Number(e.couponDiscount || 0);
+        const discountAmount = e.couponDiscountType === 'percent'
+          ? Math.max(0, (originalPrice * discountValue) / 100)
+          : (e.couponDiscountType === 'fixed' ? Math.max(0, discountValue) : 0);
+        const finalPayable = Math.max(0, originalPrice - discountAmount);
+        return `"${e.name}","${e.email}","${e.mobile}","${e.courseId?.title || e.courseName || ''}","${originalPrice}","${e.couponCode || ''}","${e.couponDiscountType || ''}","${discountValue}","${discountAmount.toFixed(2)}","${finalPayable.toFixed(2)}","${new Date(e.createdAt).toISOString()}"`;
+      }),
     ];
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', 'attachment; filename=enrollments.csv');

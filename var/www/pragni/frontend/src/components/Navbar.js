@@ -72,10 +72,10 @@ export default function Navbar() {
 
   const links = [
     { to: '/',          label: 'Home' },
-    { to: '/courses',   label: 'Courses' },
+    { to: '/courses',   label: 'Programs' },
     { to: '/services',  label: 'Services' },
-    { to: '/workshops', label: 'Live' },
-    { to: '/trainers',  label: 'Trainers' },
+    { to: '/workshops', label: 'Workshops' },
+    { to: '/trainers',  label: 'Mentors' },
     { to: '/about',     label: 'About' },
     { to: '/contact',   label: 'Contact' },
   ];
@@ -134,7 +134,7 @@ export default function Navbar() {
 
           {/* ── ACTIONS ── */}
           <div className="navbar-actions">
-            <Link to="/courses" className="navbar-cta" style={{
+            <Link to="/services" className="navbar-cta" style={{
               display: 'none', // shown via CSS on desktop
               alignItems: 'center', gap: 6,
               padding: '8px 18px', borderRadius: 100,
@@ -147,7 +147,7 @@ export default function Navbar() {
               onMouseEnter={e => e.currentTarget.style.boxShadow = '0 0 35px rgba(123,94,167,0.6)'}
               onMouseLeave={e => e.currentTarget.style.boxShadow = '0 0 20px rgba(123,94,167,0.35)'}
             >
-              Get Started
+              Book Consultation
             </Link>
             <button className="theme-toggle" onClick={toggleTheme} aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'} title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}>
               {isDark
@@ -172,12 +172,12 @@ export default function Navbar() {
             className={({ isActive }) => isActive ? 'active' : ''}
           >{l.label}</NavLink>
         ))}
-        <Link to="/courses" onClick={() => setMenuOpen(false)} style={{
+        <Link to="/services" onClick={() => setMenuOpen(false)} style={{
           marginTop: 8, display: 'block', padding: '14px 16px', borderRadius: 10,
           background: 'linear-gradient(135deg, var(--accent), var(--accent2, #5c6bc0))',
           color: '#fff', fontWeight: 600, fontSize: 15, textAlign: 'center', textDecoration: 'none',
         }}>
-          Get Started →
+          Book Consultation →
         </Link>
         <button className="theme-toggle" onClick={toggleTheme} style={{ width: '100%', justifyContent: 'center' }} aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}>
           {isDark ? 'Light mode' : 'Dark mode'}
