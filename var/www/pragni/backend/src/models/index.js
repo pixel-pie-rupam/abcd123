@@ -160,7 +160,7 @@ const settingsSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 const seoSchema = new mongoose.Schema({
-  siteName:        { type: String, default: 'Pragni', maxlength: 100 },
+  siteName:        { type: String, default: 'Pragni Tech', maxlength: 100 },
   siteDescription: { type: String, default: '', maxlength: 500 },
   siteKeywords:    { type: String, default: '', maxlength: 500 },
   canonicalUrl:    { type: String, default: '', maxlength: 500 },

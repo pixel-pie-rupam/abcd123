@@ -536,7 +536,7 @@ function CourseCard({ course, index }) {
                 </div>
               )
             }
-            <span>{course.trainer?.name || 'Pragni'}</span>
+            <span>{course.trainer?.name || 'Pragni Tech'}</span>
           </div>
           {course.price === 0
             ? <span className="cs-price-free">FREE</span>
@@ -550,7 +550,7 @@ function CourseCard({ course, index }) {
 
 /* ─── MAIN PAGE ───────────────────────────────────────────────────────────────── */
 export default function Courses() {
-  useMeta({ pageKey: 'courses', title: 'All Courses', description: 'Browse all free and premium cybersecurity, cloud and networking courses on Pragni.', keywords: 'online courses, cybersecurity certification, AWS certification, cloud training, pentesting' });
+  useMeta({ pageKey: 'courses', title: 'All Courses', description: 'Browse all free and premium cybersecurity, cloud and networking courses on Pragni Tech.', keywords: 'online courses, cybersecurity certification, AWS certification, cloud training, pentesting' });
 
   const [courses, setCourses]     = useState([]);
   const [loading, setLoading]     = useState(true);

@@ -1,93 +1,125 @@
-# Pragni Patch — Deployment Guide
+# Pragni Tech — EC2/VPC Deployment & Resync Guide
 
-## What Changed
+## 1) Target Architecture
 
-### NEW Backend Files
-- `backend/src/models/index.js` — Added: SeoSettings, ContactSettings, Banner, Category schemas
-- `backend/src/routes/admin.js` — Added: SEO, Contact, Banner, Categories CRUD routes at bottom
-- `backend/src/routes/public.js` — NEW: Public API routes (contact info, categories, active banner)
-- `backend/src/routes/seo_static.js` — NEW: robots.txt + sitemap.xml generators
-- `backend/src/server.js` — Added: public route registration + robots.txt / sitemap.xml endpoints
+- **VPC** with:
+  - Public subnet: App EC2 (Nginx + Node backend + React build)
+  - Private subnet: MongoDB EC2 (no public IP)
+- App EC2 connects to DB EC2 over private IP only.
+- Public traffic enters via Nginx (HTTPS) and proxies API to backend.
 
-### NEW Frontend Files
-- `frontend/src/admin/pages/SeoAdmin.js` — Full SEO management panel
-- `frontend/src/admin/pages/ContactAdmin.js` — Contact info + social media management
-- `frontend/src/admin/pages/BannerAdmin.js` — Homepage banner management
-- `frontend/src/admin/pages/CategoriesAdmin.js` — Course categories management
+## 2) Server Paths
 
-### UPDATED Frontend Files
-- `frontend/src/admin/AdminApp.js` — Added routes: /seo /contact /banner /categories
-- `frontend/src/admin/AdminLayout.js` — Added sidebar links for new pages
-- `frontend/src/components/Footer.js` — Dynamic social + categories from DB
-- `frontend/src/components/Navbar.js` — Added Contact link; removed dark/light toggle
-- `frontend/src/context/ThemeContext.js` — Always dark mode only
-- `frontend/src/App.js` — Added /contact route
-- `frontend/src/pages/Contact.js` — NEW Contact Us page
-- `frontend/public/index.html` — Full SEO meta, OG tags, JSON-LD schema
+- Project root: `/var/www/pragni`
+- Backend: `/var/www/pragni/backend`
+- Frontend: `/var/www/pragni/frontend`
+- Nginx config source: `/var/www/pragni/nginx/app-ec2.conf`
 
-## Deployment Steps
+## 3) First-Time Setup (App EC2)
 
-### 1. Copy files to server
 ```bash
-# From your local machine or the server
-rsync -av pragni_patch/ /var/www/pragni/
+sudo apt update && sudo apt upgrade -y
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt install -y nodejs nginx certbot python3-certbot-nginx
+sudo npm install -g pm2
 ```
 
-### 2. Restart backend
+Copy code to `/var/www/pragni`, then:
+
 ```bash
-cd /var/www/pragni
-pm2 restart ecosystem.config.js
+cd /var/www/pragni/backend
+npm install
+cp .env.example .env
+# Fill .env (MONGO_URI, JWT secrets, ADMIN_SECRET_PATH, ALLOWED_ORIGINS, NODE_ENV=production)
+npm run seed
+pm2 start src/server.js --name pragni-backend
+pm2 save
 ```
 
-### 3. Rebuild frontend
 ```bash
 cd /var/www/pragni/frontend
-npm install   # if needed
+npm install
+# create/update .env:
+# REACT_APP_API_URL=/api
+# REACT_APP_ADMIN_PATH=<same as backend ADMIN_SECRET_PATH>
 npm run build
 ```
 
-### 4. Configure SEO from Admin Panel
-- Go to: https://yoursite.com/<ADMIN_PATH>/seo
-- Set your Site URL (e.g. https://pragni.com)
-- Set default title, description, keywords
-- Set OG image URL
-- Configure robots.txt
-- Go to Contact & Social tab — add your social links
-- Submit https://yoursite.com/sitemap.xml to Google Search Console
-
-### 4.1 Important Nginx rate-limit note
-- Use the repository `nginx/app-ec2.conf` with the updated API rate limits.
-- Older values were strict enough to make normal homepage/admin loads return **503** from Nginx when several API calls fired together.
-- After updating the file, run:
 ```bash
+sudo cp /var/www/pragni/nginx/app-ec2.conf /etc/nginx/sites-available/pragni
+sudo ln -sf /etc/nginx/sites-available/pragni /etc/nginx/sites-enabled/pragni
+sudo rm -f /etc/nginx/sites-enabled/default
+sudo nginx -t && sudo systemctl reload nginx
+sudo certbot --nginx -d yourdomain.com -d www.yourdomain.com
+```
+
+## 4) First-Time Setup (DB EC2 — private only)
+
+- Install MongoDB.
+- Bind to private IP only.
+- Enable auth and create app user/database.
+- Allow inbound `27017` only from App EC2 security group.
+
+## 5) Fast Resync / Redeploy (after code updates)
+
+Run on App EC2:
+
+```bash
+cd /var/www/pragni/backend
+git pull
+npm install
+pm2 restart pragni-backend
+
+cd /var/www/pragni/frontend
+git pull
+npm install
+npm run build
+
 sudo nginx -t && sudo systemctl reload nginx
 ```
 
-### 5. Submit to Google Search Console
-1. Visit https://search.google.com/search-console
-2. Add your domain property
-3. Choose "HTML tag" verification
-4. Copy the content="" value
-5. Paste it in Admin → SEO → Verification tab
-6. Submit sitemap: https://yoursite.com/sitemap.xml
+## 6) Post-Deploy Verification
 
-## New API Endpoints
+- `https://yourdomain.com` loads.
+- `https://yourdomain.com/services` loads.
+- `https://yourdomain.com/api/health` returns `{ "status": "ok" }`.
+- Admin panel path (`/<ADMIN_PATH>`) loads and login works.
+- Site Content save works (no server error).
+- Footer/nav brand reflects **Pragni Tech**.
 
-### Public (no auth)
-- GET /api/public/contact — contact info & social links
-- GET /api/public/categories — active categories
-- GET /api/public/banner/active — active homepage banner
-- GET /robots.txt — auto-generated robots.txt
-- GET /sitemap.xml — auto-generated sitemap
+## 7) Admin-Controlled Content (important)
 
-### Admin (JWT required)
-- GET/PUT /api/<ADMIN_PATH>/seo — SEO settings
-- GET/PUT /api/<ADMIN_PATH>/contact — contact & social settings
-- GET/POST/PUT/DELETE /api/<ADMIN_PATH>/banner/:id — banners
-- GET/POST/PUT/DELETE /api/<ADMIN_PATH>/categories/:id — categories
+From admin panel:
 
-## Admin Panel New Sections
-- 📢 Banner — manage homepage top banners
-- 🗂️ Categories — manage course categories (replaces hardcoded list)
-- 📞 Contact & Social — email, phone, address, all social links
-- 🔍 SEO Manager — title, description, keywords, robots.txt, sitemap, schema, verification
+- **Site Content**
+  - `brand_name`, `brand_tagline`
+  - `footer_description`, `footer_tagline`
+  - `services_*` keys for Services page content
+- **Journey**, **Team**, **Banner**, **SEO**, **Contact**, **Categories**
+  - verify CRUD and public reflection
+
+## 8) Rollback (safe)
+
+```bash
+cd /var/www/pragni
+git log --oneline -n 10
+git checkout <known-good-commit>
+cd backend && npm install && pm2 restart pragni-backend
+cd ../frontend && npm install && npm run build
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+## 9) Ops Commands
+
+```bash
+pm2 status
+pm2 logs pragni-backend
+pm2 restart pragni-backend
+sudo systemctl status nginx
+```
+
+---
+
+For full architecture + ongoing management flows, see:
+`deployment/MANAGEMENT_ARCHITECTURE_GUIDE.md`
+

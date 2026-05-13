@@ -27,7 +27,7 @@ export default function AdminLogin() {
       <div style={{ width: '100%', maxWidth: 400 }}>
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
           <div style={{ width: 52, height: 52, borderRadius: 14, background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 24, margin: '0 auto 16px' }}>P</div>
-          <h1 style={{ fontSize: 24, fontWeight: 700 }}>Pragni Admin</h1>
+          <h1 style={{ fontSize: 24, fontWeight: 700 }}>Pragni Tech Admin</h1>
           <p style={{ fontSize: 14, color: 'var(--text3)', marginTop: 4 }}>Secure access portal</p>
         </div>
         <div className="card card-inner">
@@ -35,7 +35,7 @@ export default function AdminLogin() {
             {error && <div className="tag red" style={{ borderRadius: 10, padding: '10px 14px', fontSize: 13, justifyContent: 'flex-start' }}>⚠️ {error}</div>}
             <div className="input-group">
               <label className="input-label">Email Address</label>
-              <input type="email" className="input" required placeholder="admin@pragni.com" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} autoComplete="username" />
+              <input type="email" className="input" required placeholder="admin@pragni-tech.com" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} autoComplete="username" />
             </div>
             <div className="input-group">
               <label className="input-label">Password</label>

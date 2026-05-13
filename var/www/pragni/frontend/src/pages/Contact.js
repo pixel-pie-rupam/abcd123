@@ -107,7 +107,7 @@ textarea.c-input { resize:vertical; min-height:110px; }
 `;
 
 export default function Contact() {
-  useMeta({ pageKey: 'contact', title: 'Contact Us', description: 'Get in touch with Pragni.', keywords: 'contact, support, cybersecurity training' });
+  useMeta({ pageKey: 'contact', title: 'Contact Us', description: 'Get in touch with Pragni Tech.', keywords: 'contact, support, cybersecurity training' });
   const { contact } = useSeo();
   const [form, setForm] = useState({ name: '', email: '', message: '' });
   const [sending, setSending] = useState(false);

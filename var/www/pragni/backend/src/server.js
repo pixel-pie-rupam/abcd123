@@ -138,7 +138,7 @@ app.get('/sitemap.xml', async (req, res) => {
     const base   = seo?.canonicalUrl || (req.protocol + '://' + req.get('host'));
     const courses = await Course.find({ isPublished: true, isComing: false }, 'slug updatedAt');
 
-    const staticPages = ['', '/courses', '/workshops', '/trainers', '/about', '/contact'];
+    const staticPages = ['', '/courses', '/services', '/workshops', '/trainers', '/about', '/contact'];
     const now = new Date().toISOString();
 
     const urls = [

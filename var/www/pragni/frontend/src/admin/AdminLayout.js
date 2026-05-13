@@ -118,7 +118,7 @@ export default function AdminLayout({ children, adminPath }) {
           <div className="adm-logo-icon" style={{ flexShrink: 0 }}>P</div>
           {!collapsed && (
             <div>
-              <div className="adm-logo-text">pragni<span className="adm-logo-dot">.</span></div>
+              <div className="adm-logo-text">Pragni Tech<span className="adm-logo-dot">.</span></div>
               <div className="adm-logo-badge">Admin Panel</div>
             </div>
           )}

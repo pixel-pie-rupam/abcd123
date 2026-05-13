@@ -504,13 +504,13 @@ function useParticles(canvasRef, isDark) {
    TERMINAL LINES (unchanged)
 ───────────────────────────────────────────────────────────────── */
 const TERMINAL_LINES = [
-  { type: 'prompt', text: 'pragni-cli init learning-path' },
+  { type: 'prompt', text: 'pragni-tech-cli init learning-path' },
   { type: 'out', text: '→ Scanning available tracks…' },
   { type: 'acc', text: '✓ AWS Cloud  ✓ Azure  ✓ SOC' },
   { type: 'acc', text: '✓ Pentesting  ✓ Networking' },
   { type: 'out', text: '→ Fetching live sessions…' },
   { type: 'acc', text: '✓ 3 workshops available this week' },
-  { type: 'prompt', text: 'pragni-cli enroll --free' },
+  { type: 'prompt', text: 'pragni-tech-cli enroll --free' },
   { type: 'out', text: '→ Zero paywall. Zero hidden fees.' },
   { type: 'acc', text: '✓ Access granted. Start learning.' },
 ];
@@ -549,7 +549,7 @@ function HeroPanel() {
         <div className="h-pdot" style={{ background: '#ff5f57' }} />
         <div className="h-pdot" style={{ background: '#febc2e' }} />
         <div className="h-pdot" style={{ background: '#28c840' }} />
-        <span className="h-panel-title">pragni — terminal</span>
+        <span className="h-panel-title">pragni-tech — terminal</span>
       </div>
       {/* Terminal output */}
       <div className="h-term">
@@ -686,7 +686,7 @@ function ActiveBanner({ banner, dismissed, onDismiss }) {
           {banner.imageUrl && <img src={banner.imageUrl} alt={banner.headline || 'Banner'} style={{ width: '100%', maxHeight: 240, objectFit: 'cover', display: 'block' }} />}
           <div style={{ padding: '26px 26px 28px' }}>
             <div style={{ fontSize: 10, letterSpacing: '.18em', textTransform: 'uppercase', color: 'var(--pg-text3)', marginBottom: 10, fontFamily: 'var(--m-font)' }}>Featured update</div>
-            <h2 style={{ fontSize: 'clamp(22px,4vw,36px)', lineHeight: 1.08, marginBottom: 12, fontFamily: 'var(--h-font)', fontWeight: 700, letterSpacing: '-.04em' }}>{banner.headline || banner.message || 'Latest from Pragni'}</h2>
+            <h2 style={{ fontSize: 'clamp(22px,4vw,36px)', lineHeight: 1.08, marginBottom: 12, fontFamily: 'var(--h-font)', fontWeight: 700, letterSpacing: '-.04em' }}>{banner.headline || banner.message || 'Latest from Pragni Tech'}</h2>
             {(banner.subtext || banner.message) && <p style={{ fontSize: 14, lineHeight: 1.8, color: 'var(--pg-text2)', marginBottom: 20, fontWeight: 300 }}>{banner.subtext || banner.message}</p>}
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
               <BannerCTA href={primaryHref} label={primaryLabel} style={{ display: 'inline-flex', alignItems: 'center', padding: '12px 24px', borderRadius: 8, textDecoration: 'none', fontWeight: 600, fontFamily: 'var(--h-font)', background: banner.ctaBgColor || 'var(--pg-accent)', color: banner.ctaTextColor || '#fff' }} />
@@ -713,7 +713,7 @@ function ActiveBanner({ banner, dismissed, onDismiss }) {
    HOME PAGE
 ═══════════════════════════════════════════════════════════════ */
 export default function Home() {
-  useMeta({ pageKey: 'home', description: 'Pragni — Free cybersecurity, cloud and pentesting courses. AWS, Azure, SOC, Pentesting and more.' });
+  useMeta({ pageKey: 'home', description: 'Pragni Tech — Free cybersecurity, cloud and pentesting courses. AWS, Azure, SOC, Pentesting and more.' });
   const { isDark } = useTheme();
   const canvasRef = useRef(null);
   useParticles(canvasRef, isDark);
@@ -783,7 +783,7 @@ export default function Home() {
   const featureCards = useMemo(() => [
     { icon: '🎯', title: cv('feat1_title', 'Job-ready learning paths'), text: cv('feat1_text', 'Each track is built so beginners start quickly and grow into hands-on cloud and cyber roles.'), chip: cv('feat1_chip', 'Clear progression') },
     { icon: '🧪', title: cv('feat2_title', 'Real labs, not just theory'), text: cv('feat2_text', 'Learners move from guided lessons to workshops, projects and premium mentorship.'), chip: cv('feat2_chip', 'Hands-on from day one') },
-    { icon: '🌐', title: cv('feat3_title', 'Built for serious learners'), text: cv('feat3_text', 'Pragni blends free access with structured support so students keep moving even on tight budgets.'), chip: cv('feat3_chip', 'Affordable + accessible') },
+    { icon: '🌐', title: cv('feat3_title', 'Built for serious learners'), text: cv('feat3_text', 'Pragni Tech blends free access with structured support so students keep moving even on tight budgets.'), chip: cv('feat3_chip', 'Affordable + accessible') },
     { icon: '🏆', title: cv('feat4_title', 'Confidence before interviews'), text: cv('feat4_text', 'From foundations to advanced practice, designed to help students explain what they know clearly.'), chip: cv('feat4_chip', 'Portfolio mindset') },
   ], [sc]); // eslint-disable-line
 
@@ -832,7 +832,7 @@ export default function Home() {
                   </h1>
 
                   <p className="h-desc h-fade hd3">
-                    {cv('hero_description', 'Pragni is built to make world-class tech skills accessible to everyone. AWS, Azure, SOC, Pentesting, Networking — free and affordable, always.')}
+                    {cv('hero_description', 'Pragni Tech is built to make world-class tech skills accessible to everyone. AWS, Azure, SOC, Pentesting, Networking — free and affordable, always.')}
                   </p>
 
                   <div className="h-ctas h-fade hd4">
@@ -869,7 +869,7 @@ export default function Home() {
           <section className="h-sec">
             <div className="h-wrap">
               <div className="h-sec-head">
-                <div className="h-kicker">Why Pragni Works</div>
+                <div className="h-kicker">Why Pragni Tech Works</div>
                 <h2 className="h-sec-h2">A sharper ed-tech experience<br />for focused learners</h2>
                 <p className="h-sec-sub">Designed to feel premium, stay simple on mobile, and guide students from curiosity to confident execution.</p>
               </div>
@@ -1007,7 +1007,7 @@ export default function Home() {
                 <div className="h-sec-head">
                   <div className="h-kicker">The People</div>
                   <h2 className="h-sec-h2">{cv('team_title', 'Meet Our Team')}</h2>
-                  <p className="h-sec-sub">{cv('team_subtitle', 'Security professionals and educators building Pragni.')}</p>
+                  <p className="h-sec-sub">{cv('team_subtitle', 'Security professionals and educators building Pragni Tech.')}</p>
                 </div>
                 <div className="h-team">
                   {team.map((m, i) => (
@@ -1040,12 +1040,12 @@ export default function Home() {
                 <div className="h-wrap">
                   <div className="h-sec-head">
                     <div className="h-kicker">{cv('hero_video_kicker', 'Watch & Learn')}</div>
-                    <h2 className="h-sec-h2">{cv('hero_video_title', 'See Pragni in Action')}</h2>
+                    <h2 className="h-sec-h2">{cv('hero_video_title', 'See Pragni Tech in Action')}</h2>
                     <p className="h-sec-sub">{cv('hero_video_desc', 'Watch a quick overview of what we offer.')}</p>
                   </div>
                   <div className="h-video-wrap">
                     {videoPlaying && ytId
-                      ? <iframe src={ytSrc} allow="autoplay; fullscreen" allowFullScreen title="Pragni video" />
+                      ? <iframe src={ytSrc} allow="autoplay; fullscreen" allowFullScreen title="Pragni Tech video" />
                       : videoPlaying && cv('hero_video_url', '')
                         ? <video src={cv('hero_video_url', '')} poster={cv('hero_video_poster', '')} autoPlay controls />
                         : <>
@@ -1075,7 +1075,7 @@ export default function Home() {
             <div className="h-wrap">
               <div className="h-sec-head">
                 <div className="h-kicker">Learning Flow</div>
-                <h2 className="h-sec-h2">How students move through Pragni</h2>
+                <h2 className="h-sec-h2">How students move through Pragni Tech</h2>
                 <p className="h-sec-sub">A cleaner journey helps learners know what to do next, from free access to premium mentorship.</p>
               </div>
               <div className="h-roadmap">
@@ -1112,7 +1112,7 @@ export default function Home() {
             <div className="h-mission-deco" />
             <div className="h-wrap">
               <div className="h-mission-q">"{cv('mission_quote', 'Every learner deserves world-class tech education. Period.')}"</div>
-              <p className="h-mission-sub">{cv('mission_text', 'Pragni was founded to break the paywall on cybersecurity and cloud education. Free for everyone, always.')}</p>
+              <p className="h-mission-sub">{cv('mission_text', 'Pragni Tech was founded to break the paywall on cybersecurity and cloud education. Free for everyone, always.')}</p>
               <Link to="/about" className="h-btn-ghost">Read Our Story →</Link>
             </div>
           </section>

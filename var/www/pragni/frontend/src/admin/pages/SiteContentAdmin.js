@@ -7,11 +7,19 @@ const ADMIN_BASE = `/api/${process.env.REACT_APP_ADMIN_PATH || 'xK9mP2qR7nL4wV'}
 
 const FIELDS = [
   {
-    section: 'Brand & Navbar',
-    desc: 'Controls the brand name and tagline shown in the header next to the logo.',
-    fields: [
-      { key: 'brand_name',    label: 'Brand Name',    type: 'text',     placeholder: 'pragni',                       hint: 'Shown in navbar. The last character gets an accent color automatically.' },
+      section: 'Brand & Navbar',
+      desc: 'Controls the brand name and tagline shown in the header next to the logo.',
+      fields: [
+      { key: 'brand_name',    label: 'Brand Name',    type: 'text',     placeholder: 'Pragni Tech',                  hint: 'Shown in navbar/footer. The last character gets an accent color automatically.' },
       { key: 'brand_tagline', label: 'Brand Tagline', type: 'text',     placeholder: 'Learn Cybersecurity for Free',  hint: 'Tiny line shown below brand name in navbar. Leave blank to hide.' },
+      ],
+  },
+  {
+    section: 'Footer',
+    desc: 'Controls footer brand description and tagline.',
+    fields: [
+      { key: 'footer_description', label: 'Footer Description', type: 'textarea', placeholder: 'World-class cybersecurity & cloud education — free & affordable for everyone.' },
+      { key: 'footer_tagline',     label: 'Footer Tagline',     type: 'text',     placeholder: 'Skills for all. Free & affordable.' },
     ],
   },
   {
@@ -23,7 +31,7 @@ const FIELDS = [
       { key: 'hero_title_gradient', label: 'Gradient Word',      type: 'text',     placeholder: 'Cybersecurity',        hint: 'The animated gradient-colored word.' },
       { key: 'hero_title_line2',    label: 'Title Line 2',       type: 'text',     placeholder: 'Cloud.',               hint: 'Second line, first part (bold).' },
       { key: 'hero_title_line3',    label: 'Title Line 2 (dim)', type: 'text',     placeholder: 'For Free.',            hint: 'Second line, second part (dimmer weight).' },
-      { key: 'hero_description',    label: 'Hero Description',   type: 'textarea', placeholder: 'Pragni is built to make world-class tech skills accessible to everyone.' },
+      { key: 'hero_description',    label: 'Hero Description',   type: 'textarea', placeholder: 'Pragni Tech is built to make world-class tech skills accessible to everyone.' },
       { key: 'stat1_num',  label: 'Stat 1 Number', type: 'text', placeholder: '8+' },
       { key: 'stat1_lbl',  label: 'Stat 1 Label',  type: 'text', placeholder: 'Course tracks' },
       { key: 'stat2_num',  label: 'Stat 2 Number', type: 'text', placeholder: '100%' },
@@ -47,7 +55,7 @@ const FIELDS = [
     desc: 'Controls the heading and subtitle for the Meet Our Team section.',
     fields: [
       { key: 'team_title',    label: 'Section Title',    type: 'text', placeholder: 'Meet Our Team' },
-      { key: 'team_subtitle', label: 'Section Subtitle', type: 'text', placeholder: 'Passionate educators and security professionals building Pragni.' },
+      { key: 'team_subtitle', label: 'Section Subtitle', type: 'text', placeholder: 'Passionate educators and security professionals building Pragni Tech.' },
     ],
   },
   {
@@ -58,7 +66,7 @@ const FIELDS = [
       { key: 'hero_video_url',     label: 'Self-hosted MP4 URL (fallback)', type: 'text', placeholder: 'https://yoursite.com/video.mp4', hint: 'Used only if YouTube ID is empty.' },
       { key: 'hero_video_poster',  label: 'Video Poster Image URL', type: 'text', placeholder: 'https://… thumbnail image', hint: 'Shown before the video plays (for self-hosted only).' },
       { key: 'hero_video_kicker',  label: 'Section Kicker', type: 'text', placeholder: 'Watch & Learn' },
-      { key: 'hero_video_title',   label: 'Section Title', type: 'text', placeholder: 'See Pragni in Action' },
+      { key: 'hero_video_title',   label: 'Section Title', type: 'text', placeholder: 'See Pragni Tech in Action' },
       { key: 'hero_video_desc',    label: 'Section Subtitle', type: 'text', placeholder: 'Watch a quick overview of what we offer.' },
       { key: 'video_tag1', label: 'Video Tag 1', type: 'text', placeholder: 'Free to watch' },
       { key: 'video_tag2', label: 'Video Tag 2', type: 'text', placeholder: '5 minutes' },
@@ -70,7 +78,32 @@ const FIELDS = [
     desc: 'Controls the mission quote and text shown at the bottom of the Home page.',
     fields: [
       { key: 'mission_quote', label: 'Mission Quote', type: 'textarea', placeholder: 'Every learner deserves world-class tech education.',  hint: 'Shown in large text. No need to add quotes — they are added automatically.' },
-      { key: 'mission_text',  label: 'Mission Text',  type: 'textarea', placeholder: 'Pragni was founded to break the paywall on cybersecurity and cloud education.' },
+      { key: 'mission_text',  label: 'Mission Text',  type: 'textarea', placeholder: 'Pragni Tech was founded to break the paywall on cybersecurity and cloud education.' },
+    ],
+  },
+  {
+    section: 'Services Page',
+    desc: 'Controls the public /services page content, cards, CTAs, and background image.',
+    fields: [
+      { key: 'services_background_image',   label: 'Background Image URL',   type: 'text',     placeholder: 'https://.../background.jpg', hint: 'Optional background image shown behind glass cards.' },
+      { key: 'services_eyebrow',            label: 'Eyebrow',                 type: 'text',     placeholder: 'Pragni Tech Services' },
+      { key: 'services_title',              label: 'Main Title',              type: 'text',     placeholder: 'Production-ready digital services for modern teams.' },
+      { key: 'services_subtitle',           label: 'Subtitle',                type: 'textarea', placeholder: 'Every block below is admin-editable so you can tune offerings and CTA copy without code changes.' },
+      { key: 'services_cards_json',         label: 'Cards JSON',              type: 'textarea', placeholder: '[{\"title\":\"Cloud Security\",\"text\":\"Architecture hardening...\"}]', hint: 'Optional. JSON array of cards. If empty, card keys below are used.' },
+      { key: 'services_card_1_title',       label: 'Card 1 Title',            type: 'text',     placeholder: 'Cloud Security' },
+      { key: 'services_card_1_text',        label: 'Card 1 Text',             type: 'textarea', placeholder: 'Architecture hardening, IAM baselines, and automated posture checks.' },
+      { key: 'services_card_2_title',       label: 'Card 2 Title',            type: 'text',     placeholder: 'Web & API Security' },
+      { key: 'services_card_2_text',        label: 'Card 2 Text',             type: 'textarea', placeholder: 'Pentesting, secure SDLC guidance, and vulnerability remediation plans.' },
+      { key: 'services_card_3_title',       label: 'Card 3 Title',            type: 'text',     placeholder: 'DevSecOps Setup' },
+      { key: 'services_card_3_text',        label: 'Card 3 Text',             type: 'textarea', placeholder: 'Pipeline security, secrets management, and release gating for safer deployments.' },
+      { key: 'services_card_4_title',       label: 'Card 4 Title',            type: 'text',     placeholder: 'Security Training' },
+      { key: 'services_card_4_text',        label: 'Card 4 Text',             type: 'textarea', placeholder: 'Hands-on internal enablement for engineering and operations teams.' },
+      { key: 'services_cta_title',          label: 'CTA Title',               type: 'text',     placeholder: 'Need a custom engagement?' },
+      { key: 'services_cta_text',           label: 'CTA Text',                type: 'textarea', placeholder: 'We can tailor a service package for your team, growth stage, and budget.' },
+      { key: 'services_cta_primary_label',  label: 'Primary CTA Label',       type: 'text',     placeholder: 'Talk to our team' },
+      { key: 'services_cta_primary_url',    label: 'Primary CTA URL',         type: 'text',     placeholder: '/contact' },
+      { key: 'services_cta_secondary_label',label: 'Secondary CTA Label',     type: 'text',     placeholder: 'Explore courses' },
+      { key: 'services_cta_secondary_url',  label: 'Secondary CTA URL',       type: 'text',     placeholder: '/courses' },
     ],
   },
 ];

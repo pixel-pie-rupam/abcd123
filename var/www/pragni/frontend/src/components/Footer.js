@@ -70,6 +70,7 @@ const SOCIALS = [
 export default function Footer() {
   const [logoUrl, setLogoUrl] = useState('');
   const [categories, setCategories] = useState([]);
+  const [siteContent, setSiteContent] = useState({});
   const { contact } = useSeo();
 
   useEffect(() => {
@@ -91,10 +92,26 @@ export default function Footer() {
       .then(d => { if (d.categories) setCategories(d.categories); })
       .catch(() => {});
 
-    return () => window.removeEventListener('logo-updated', onLogoUpdate);
+    const loadContent = () => {
+      fetch('/api/site-content', { cache: 'no-store' })
+        .then(r => r.json())
+        .then(d => setSiteContent(d.content || {}))
+        .catch(() => {});
+    };
+    loadContent();
+    window.addEventListener('site-content-updated', loadContent);
+
+    return () => {
+      window.removeEventListener('logo-updated', onLogoUpdate);
+      window.removeEventListener('site-content-updated', loadContent);
+    };
   }, []);
 
   const activeSocials = SOCIALS.filter(s => contact?.[s.key]);
+
+  const brandName = siteContent.brand_name || 'Pragni Tech';
+  const brandDescription = siteContent.footer_description || 'World-class cybersecurity & cloud education — free & affordable for everyone.';
+  const footerTagline = siteContent.footer_tagline || 'Skills for all. Free & affordable.';
 
   const bg = 'var(--bg2)';
   const mutedColor = 'var(--text3)';
@@ -121,7 +138,7 @@ export default function Footer() {
           <div style={{ gridColumn: 'span 1' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
               {logoUrl
-                ? <img src={logoUrl} alt="Pragni" style={{ height: 34, width: 'auto', objectFit: 'contain' }} />
+                ? <img src={logoUrl} alt={brandName} style={{ height: 34, width: 'auto', objectFit: 'contain' }} />
                 : <span style={{
                     width: 34, height: 34, borderRadius: 8,
                     background: 'var(--accent)', display: 'flex',
@@ -130,11 +147,11 @@ export default function Footer() {
                   }}>P</span>
               }
               <span style={{ fontSize: 19, fontWeight: 700, color: headColor }}>
-                pragni<span style={{ color: 'var(--accent2, #6c47ff)' }}>.</span>
+                {brandName}<span style={{ color: 'var(--accent2, #6c47ff)' }}>.</span>
               </span>
             </div>
             <p style={{ color: mutedColor, fontSize: 13, lineHeight: 1.7, margin: 0 }}>
-              World-class cybersecurity &amp; cloud education — free &amp; affordable for everyone.
+              {brandDescription}
             </p>
           </div>
 
@@ -165,6 +182,7 @@ export default function Footer() {
             </h4>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
               {[
+                { to: '/services', label: 'Services' },
                 { to: '/workshops', label: 'Live Workshops' },
                 { to: '/trainers', label: 'Our Trainers' },
                 { to: '/about', label: 'About Us' },
@@ -232,10 +250,10 @@ export default function Footer() {
           gap: 8,
         }}>
           <p style={{ color: 'var(--text3)', fontSize: 12, margin: 0 }}>
-            © {new Date().getFullYear()} Pragni. All rights reserved.
+            © {new Date().getFullYear()} {brandName}. All rights reserved.
           </p>
           <p style={{ color: 'var(--accent2, #6c47ff)', fontWeight: 600, fontSize: 12, margin: 0 }}>
-            Skills for all. Free &amp; affordable.
+            {footerTagline}
           </p>
         </div>
       </div>

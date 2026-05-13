@@ -10,6 +10,7 @@ const Courses           = lazy(() => import('./pages/Courses'));
 const CourseDetail      = lazy(() => import('./pages/CourseDetail'));
 const PremiumCourseDetail = lazy(() => import('./pages/PremiumCourseDetail'));
 const VideoPlayer       = lazy(() => import('./pages/VideoPlayer'));
+const Services          = lazy(() => import('./pages/Services'));
 const Workshops         = lazy(() => import('./pages/Workshops'));
 const Trainers          = lazy(() => import('./pages/Trainers'));
 const About             = lazy(() => import('./pages/About'));
@@ -34,8 +35,9 @@ function App() {
               <main>
                 <Routes>
                   <Route path="/"                              element={<Home />} />
-                  <Route path="/courses"                       element={<Courses />} />
-                  <Route path="/courses/premium/:slug"         element={<PremiumCourseDetail />} />
+                   <Route path="/courses"                       element={<Courses />} />
+                   <Route path="/services"                      element={<Services />} />
+                   <Route path="/courses/premium/:slug"         element={<PremiumCourseDetail />} />
                   <Route path="/courses/:slug"                 element={<CourseDetail />} />
                   <Route path="/courses/:slug/watch/:videoId"  element={<VideoPlayer />} />
                   <Route path="/workshops"                     element={<Workshops />} />

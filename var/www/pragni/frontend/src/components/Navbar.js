@@ -32,7 +32,7 @@ export default function Navbar() {
   const { isDark, toggleTheme } = useTheme();
   const [menuOpen, setMenuOpen] = useState(false);
   const [logoUrl,  setLogoUrl]  = useState(_logoCache.url || '');
-  const [brandName, setBrandName] = useState(_contentCache.data['brand_name'] || 'pragni');
+  const [brandName, setBrandName] = useState(_contentCache.data['brand_name'] || 'Pragni Tech');
   const [brandTagline, setBrandTagline] = useState(_contentCache.data['brand_tagline'] || '');
   const [hidden,   setHidden]   = useState(false);
   const lastScrollY = useRef(0);
@@ -73,6 +73,7 @@ export default function Navbar() {
   const links = [
     { to: '/',          label: 'Home' },
     { to: '/courses',   label: 'Courses' },
+    { to: '/services',  label: 'Services' },
     { to: '/workshops', label: 'Live' },
     { to: '/trainers',  label: 'Trainers' },
     { to: '/about',     label: 'About' },
@@ -80,7 +81,7 @@ export default function Navbar() {
   ];
 
   // Brand name: split last char for accent dot effect
-  const bName = brandName || 'pragni';
+  const bName = brandName || 'Pragni Tech';
   const bMain = bName.slice(0, -1);
   const bLast = bName.slice(-1);
 

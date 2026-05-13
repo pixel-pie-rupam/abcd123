@@ -960,7 +960,6 @@ router.put('/site-content', adminOnly, async (req, res) => {
     await Promise.all(Object.entries(updates).map(([key, value]) =>
       SiteContent.findOneAndUpdate({ key }, { key, value: sanitizeStr(value, 5000) }, { upsert: true, new: true })
     ));
-    window && window.dispatchEvent && window.dispatchEvent(new Event('site-content-updated'));
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });

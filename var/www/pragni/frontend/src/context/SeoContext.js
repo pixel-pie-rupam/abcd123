@@ -118,7 +118,7 @@ export function useMeta({ pageKey, title, description, keywords, ogImage } = {})
     const pg = overrides[pageKey] || {};
 
     // ── FIX: always have a fallback siteName so title never vanishes ──
-    const siteName   = safeSeo.siteName || 'Pragni';
+    const siteName   = safeSeo.siteName || 'Pragni Tech';
     const finalTitle = pg.title || (title ? `${title} · ${siteName}` : siteName);
     const finalDesc  = pg.description || description || safeSeo.siteDescription || '';
     const finalKw    = pg.keywords || keywords || safeSeo.siteKeywords || '';
