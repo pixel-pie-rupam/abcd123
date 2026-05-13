@@ -1,0 +1,1251 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import { getCourseBySlug, enrollCourse } from '../utils/api';
+
+/* ─── STYLES ──────────────────────────────────────────────────────────────────── */
+const STYLES = `
+  @import url('https://fonts.googleapis.com/css2?family=Clash+Display:wght@400;500;600;700&family=Cabinet+Grotesk:wght@300;400;500;700;800&family=Outfit:wght@300;400;500;600&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;1,300&display=swap');
+
+  :root {
+    --ink:        #08090f;
+    --ink2:       #0d0f1a;
+    --ink3:       #111420;
+    --ink4:       #161924;
+    --surface:    #1a1d2e;
+    --surface2:   #1f2335;
+    --lift:       #242840;
+    --border:     rgba(255,255,255,0.055);
+    --border2:    rgba(255,255,255,0.10);
+    --border3:    rgba(255,255,255,0.18);
+    --text:       #eef0ff;
+    --text2:      #8b91b8;
+    --text3:      #4a4f72;
+
+    --violet:     #7b5ea7;
+    --violet2:    #9d7fd4;
+    --violet3:    #c4a8ff;
+    --cyan:       #4fc3f7;
+    --cyan2:      #29b6f6;
+    --teal:       #26d0a1;
+    --rose:       #f06292;
+    --amber:      #ffca28;
+    --emerald:    #00e676;
+    --indigo:     #5c6bc0;
+
+    --glow-v:     rgba(123,94,167,0.45);
+    --glow-c:     rgba(79,195,247,0.3);
+    --glow-t:     rgba(38,208,161,0.3);
+
+    --font-display: 'Clash Display', 'Cabinet Grotesk', sans-serif;
+    --font-body:    'Plus Jakarta Sans', 'Outfit', sans-serif;
+    --ease:       cubic-bezier(0.16, 1, 0.3, 1);
+    --ease2:      cubic-bezier(0.4, 0, 0.2, 1);
+    --r:          18px;
+    --r-sm:       10px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  ::selection { background: rgba(157,127,212,0.28); color: #fff; }
+
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: var(--ink2); }
+  ::-webkit-scrollbar-thumb { background: var(--lift); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--violet); }
+
+  /* ══════════════ ROOT ══════════════ */
+  .cd-root {
+    font-family: var(--font-body);
+    color: var(--text);
+    background: var(--ink);
+    min-height: 100vh;
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  /* ══════════════ AURORA ══════════════ */
+  .cd-aurora {
+    position: fixed; inset: 0;
+    pointer-events: none; z-index: 0; overflow: hidden;
+  }
+  .aurora-blob {
+    position: absolute; border-radius: 50%;
+    filter: blur(90px); will-change: transform, opacity;
+    mix-blend-mode: screen;
+  }
+  .cd-ab1 {
+    width: 700px; height: 700px;
+    background: radial-gradient(circle at 40% 40%,
+      rgba(123,94,167,0.26) 0%, rgba(79,195,247,0.10) 50%, transparent 70%);
+    top: -180px; right: -120px;
+    animation: cdAurora1 22s ease-in-out infinite alternate;
+  }
+  .cd-ab2 {
+    width: 550px; height: 550px;
+    background: radial-gradient(circle at 60% 40%,
+      rgba(38,208,161,0.20) 0%, rgba(123,94,167,0.12) 55%, transparent 70%);
+    bottom: 0; left: -80px;
+    animation: cdAurora2 28s ease-in-out infinite alternate;
+  }
+  .cd-ab3 {
+    width: 400px; height: 400px;
+    background: radial-gradient(circle at 50% 50%,
+      rgba(79,195,247,0.16) 0%, rgba(240,98,146,0.08) 55%, transparent 70%);
+    top: 55%; left: 42%;
+    animation: cdAurora3 18s ease-in-out infinite alternate;
+  }
+  @keyframes cdAurora1 { from{transform:translate(0,0) scale(1)} to{transform:translate(-70px,90px) scale(1.12)} }
+  @keyframes cdAurora2 { from{transform:translate(0,0) scale(1)} to{transform:translate(80px,-70px) scale(1.08)} }
+  @keyframes cdAurora3 { from{transform:translate(0,0)} to{transform:translate(-50px,40px)} }
+
+  .cd-mesh {
+    position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.016) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.016) 1px, transparent 1px);
+    background-size: 72px 72px;
+    mask-image: radial-gradient(ellipse 85% 65% at 60% 20%, rgba(0,0,0,0.45), transparent);
+  }
+  .cd-noise {
+    position: fixed; inset: 0; pointer-events: none; z-index: 1; opacity: 0.03;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* ══════════════ INNER ══════════════ */
+  .cd-inner { position: relative; z-index: 3; }
+  .cd-container { max-width: 1240px; margin: 0 auto; padding: 0 28px; }
+
+  /* ══════════════ TOP BAR ══════════════ */
+  .cd-topbar {
+    padding: 28px 0 0;
+    display: flex; align-items: center; gap: 16px;
+  }
+  .cd-back {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-size: 13px; font-weight: 600; color: var(--text2);
+    text-decoration: none; letter-spacing: 0.02em;
+    padding: 8px 18px 8px 14px;
+    border-radius: 100px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border2);
+    transition: all 0.3s var(--ease);
+    cursor: pointer;
+  }
+  .cd-back:hover {
+    color: var(--violet3); border-color: rgba(157,127,212,0.4);
+    background: rgba(123,94,167,0.1); transform: translateX(-3px);
+  }
+  .cd-breadcrumb {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12px; color: var(--text3);
+  }
+  .cd-breadcrumb a { color: var(--text3); text-decoration: none; transition: color 0.2s; }
+  .cd-breadcrumb a:hover { color: var(--violet3); }
+  .cd-breadcrumb-sep { opacity: 0.4; }
+
+  /* ══════════════ HERO LAYOUT ══════════════ */
+  .cd-hero {
+    padding: 44px 0 0;
+    display: grid;
+    grid-template-columns: 1fr 400px;
+    gap: 60px;
+    align-items: start;
+  }
+
+  /* ── Cat eyebrow ── */
+  .cd-eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 16px; border-radius: 100px;
+    font-size: 11px; font-weight: 700; letter-spacing: 0.10em; text-transform: uppercase;
+    border: 1px solid; margin-bottom: 24px;
+  }
+  .cd-eyebrow-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: currentColor;
+    box-shadow: 0 0 8px currentColor;
+    animation: eyebrowPulse 2.5s ease-in-out infinite;
+  }
+  @keyframes eyebrowPulse {
+    0%,100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.4); opacity: 0.6; }
+  }
+
+  /* ── Title ── */
+  .cd-title {
+    font-family: var(--font-display);
+    font-size: clamp(34px, 4.8vw, 62px);
+    font-weight: 700; line-height: 1.04;
+    letter-spacing: -0.03em; margin-bottom: 22px;
+  }
+  .cd-title-grad {
+    background: linear-gradient(135deg, var(--text) 0%, var(--violet3) 50%, var(--cyan) 100%);
+    background-size: 300% 300%;
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    animation: cdGradShift 8s ease-in-out infinite;
+  }
+  @keyframes cdGradShift {
+    0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%}
+  }
+
+  .cd-desc {
+    font-size: 16px; color: var(--text2);
+    line-height: 1.8; max-width: 580px;
+    margin-bottom: 28px; font-weight: 300;
+  }
+
+  /* ── Meta pills ── */
+  .cd-meta-row {
+    display: flex; flex-wrap: wrap; gap: 9px;
+    margin-bottom: 32px; align-items: center;
+  }
+  .cd-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px; font-weight: 600; letter-spacing: 0.02em;
+    padding: 6px 14px; border-radius: 100px;
+    border: 1px solid var(--border2);
+    color: var(--text2);
+    background: rgba(255,255,255,0.04);
+  }
+  .cd-pill-free {
+    color: var(--teal); border-color: rgba(38,208,161,0.3);
+    background: rgba(38,208,161,0.08);
+    box-shadow: 0 0 16px rgba(38,208,161,0.1);
+    font-size: 11px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase;
+  }
+  .cd-pill-level {
+    color: var(--amber); border-color: rgba(255,202,40,0.25);
+    background: rgba(255,202,40,0.07);
+  }
+
+  /* ── Social proof strip ── */
+  .cd-social-strip {
+    display: flex; align-items: center; gap: 20px;
+    margin-bottom: 30px;
+    padding: 14px 20px;
+    background: rgba(255,255,255,0.024);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    backdrop-filter: blur(12px);
+  }
+  .cd-stars { display: flex; gap: 3px; }
+  .cd-star { font-size: 13px; color: var(--amber); }
+  .cd-star.half { opacity: 0.5; }
+  .cd-rating-val {
+    font-family: var(--font-display);
+    font-size: 15px; font-weight: 700; color: var(--text);
+    margin-left: 4px;
+  }
+  .cd-rating-count { font-size: 12px; color: var(--text3); }
+  .cd-social-divider { width: 1px; height: 22px; background: var(--border2); }
+  .cd-learner-avatars { display: flex; }
+  .cd-learner-av {
+    width: 26px; height: 26px; border-radius: 50%;
+    border: 2px solid var(--ink);
+    background: linear-gradient(135deg, var(--violet), var(--indigo));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px; font-weight: 800; color: #fff;
+    margin-left: -8px;
+  }
+  .cd-learner-av:first-child { margin-left: 0; }
+  .cd-learner-count { font-size: 12px; color: var(--text2); margin-left: 10px; }
+
+  /* ── Trainer card ── */
+  .cd-trainer-row {
+    display: flex; align-items: center; gap: 14px;
+    padding: 16px 20px;
+    background: rgba(26,29,46,0.65);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    backdrop-filter: blur(16px);
+    margin-bottom: 10px;
+  }
+  .cd-trainer-avatar {
+    width: 48px; height: 48px; border-radius: 50%;
+    object-fit: cover; flex-shrink: 0;
+    border: 2px solid rgba(157,127,212,0.3);
+  }
+  .cd-trainer-avatar-ph {
+    width: 48px; height: 48px; border-radius: 50%; flex-shrink: 0;
+    background: linear-gradient(135deg, var(--violet), var(--indigo));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 17px; font-weight: 800; color: #fff;
+    border: 2px solid rgba(157,127,212,0.3);
+  }
+  .cd-trainer-info { flex: 1; min-width: 0; }
+  .cd-trainer-name { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 2px; }
+  .cd-trainer-role { font-size: 12px; color: var(--text3); }
+  .cd-trainer-badge {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase;
+    color: var(--violet3); padding: 4px 12px; border-radius: 100px;
+    background: rgba(123,94,167,0.1); border: 1px solid rgba(157,127,212,0.25);
+  }
+
+  /* ══════════════ STICKY SIDEBAR ══════════════ */
+  .cd-sidebar-wrap {
+    position: sticky;
+    top: 90px;
+  }
+
+  /* ── Thumbnail ── */
+  .cd-thumb {
+    width: 100%; aspect-ratio: 16/9;
+    border-radius: 20px; overflow: hidden;
+    border: 1px solid var(--border2);
+    box-shadow: 0 40px 100px rgba(0,0,0,0.6), 0 0 0 1px rgba(123,94,167,0.12);
+    position: relative; margin-bottom: 18px;
+    cursor: pointer;
+  }
+  .cd-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .cd-thumb-ph {
+    width: 100%; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 80px;
+    background: linear-gradient(135deg, var(--surface) 0%, var(--ink3) 100%);
+    position: relative;
+  }
+  .cd-thumb-ph::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(circle at 30% 40%, rgba(123,94,167,0.25), transparent 65%);
+  }
+  .cd-play-overlay {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(8,9,15,0.38);
+    backdrop-filter: blur(3px);
+    transition: all 0.35s var(--ease);
+    border-radius: inherit;
+  }
+  .cd-thumb:hover .cd-play-overlay { background: rgba(8,9,15,0.52); }
+  .cd-play-circle {
+    width: 66px; height: 66px; border-radius: 50%;
+    background: rgba(123,94,167,0.92);
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 0 60px rgba(123,94,167,0.7), 0 0 0 16px rgba(123,94,167,0.14);
+    transition: all 0.35s var(--ease);
+  }
+  .cd-thumb:hover .cd-play-circle {
+    transform: scale(1.1);
+    box-shadow: 0 0 90px rgba(123,94,167,0.9), 0 0 0 24px rgba(123,94,167,0.1);
+  }
+  .cd-play-icon {
+    width: 0; height: 0;
+    border-style: solid; border-width: 11px 0 11px 21px;
+    border-color: transparent transparent transparent #fff;
+    margin-left: 5px;
+  }
+  .cd-preview-label {
+    position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%);
+    font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+    color: rgba(255,255,255,0.7); white-space: nowrap;
+  }
+
+  /* ── Enroll card ── */
+  .cd-enroll-card {
+    background: rgba(26,29,46,0.92);
+    border: 1px solid var(--border2);
+    border-radius: 22px;
+    padding: 28px;
+    backdrop-filter: blur(28px);
+    box-shadow: 0 32px 90px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.07);
+    position: relative; overflow: hidden;
+  }
+  .cd-enroll-card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(157,127,212,0.65), transparent);
+  }
+  .cd-price-row { display: flex; align-items: baseline; gap: 10px; margin-bottom: 5px; }
+  .cd-price-main {
+    font-family: var(--font-display);
+    font-size: 40px; font-weight: 700; letter-spacing: -0.03em; color: var(--text);
+  }
+  .cd-price-free-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 11px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--teal); padding: 5px 14px; border-radius: 100px;
+    background: rgba(38,208,161,0.1); border: 1px solid rgba(38,208,161,0.3);
+    box-shadow: 0 0 20px rgba(38,208,161,0.12);
+    margin-bottom: 6px; display: inline-flex;
+  }
+  .cd-price-free-badge .fb-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--teal); box-shadow: 0 0 8px var(--teal);
+    animation: fbPulse2 1.8s ease-in-out infinite;
+  }
+  @keyframes fbPulse2 { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(0.7);opacity:0.5} }
+  .cd-price-sub { font-size: 12px; color: var(--text3); margin-bottom: 22px; }
+
+  /* countdown / urgency strip */
+  .cd-urgency {
+    display: flex; align-items: center; gap: 8px;
+    padding: 9px 14px; border-radius: 10px; margin-bottom: 18px;
+    background: rgba(255,202,40,0.06);
+    border: 1px solid rgba(255,202,40,0.2);
+    font-size: 12px; font-weight: 600; color: var(--amber);
+  }
+  .cd-urgency-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--amber); box-shadow: 0 0 8px var(--amber);
+    flex-shrink: 0;
+    animation: fbPulse2 1.4s ease-in-out infinite;
+  }
+
+  .cd-btn-enroll {
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    width: 100%; padding: 16px;
+    border-radius: 14px; font-family: var(--font-body);
+    font-size: 15px; font-weight: 700;
+    cursor: pointer; border: none;
+    background: linear-gradient(135deg, var(--violet) 0%, var(--indigo) 100%);
+    color: #fff;
+    box-shadow: 0 0 50px rgba(123,94,167,0.5);
+    transition: all 0.35s var(--ease);
+    letter-spacing: 0.01em; margin-bottom: 12px;
+    text-decoration: none; position: relative; overflow: hidden;
+  }
+  .cd-btn-enroll::after {
+    content: '';
+    position: absolute; inset: 0;
+    background: rgba(255,255,255,0);
+    transition: background 0.3s;
+  }
+  .cd-btn-enroll:hover::after { background: rgba(255,255,255,0.07); }
+  .cd-btn-enroll:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 0 80px rgba(123,94,167,0.7), 0 10px 40px rgba(0,0,0,0.5);
+  }
+  .cd-btn-enroll:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+  .cd-btn-free {
+    background: linear-gradient(135deg, var(--teal), #00c87a);
+    color: #061410; font-weight: 800;
+    box-shadow: 0 0 40px rgba(38,208,161,0.4);
+  }
+  .cd-btn-free:hover { box-shadow: 0 0 65px rgba(38,208,161,0.65), 0 10px 40px rgba(0,0,0,0.4); }
+  .cd-btn-share {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    width: 100%; padding: 12px;
+    border-radius: 12px; font-family: var(--font-body);
+    font-size: 13px; font-weight: 600;
+    cursor: pointer;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border2); color: var(--text2);
+    transition: all 0.3s var(--ease);
+    margin-bottom: 20px;
+  }
+  .cd-btn-share:hover { border-color: var(--border3); color: var(--text); background: rgba(255,255,255,0.07); }
+
+  .cd-enroll-perks { display: flex; flex-direction: column; gap: 9px; }
+  .cd-perk {
+    display: flex; align-items: center; gap: 12px;
+    font-size: 13px; color: var(--text2); font-weight: 400;
+  }
+  .cd-perk-icon {
+    width: 30px; height: 30px; border-radius: 9px; flex-shrink: 0;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center; font-size: 14px;
+  }
+
+  /* ══════════════ STATS STRIP ══════════════ */
+  .cd-stats-strip {
+    display: flex; flex-wrap: wrap; gap: 0;
+    background: rgba(26,29,46,0.65);
+    border: 1px solid var(--border);
+    border-radius: 20px; overflow: hidden;
+    margin: 52px 0;
+    backdrop-filter: blur(16px);
+  }
+  .cd-stat-item {
+    flex: 1; min-width: 130px;
+    padding: 26px 28px;
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column; gap: 6px;
+    position: relative; overflow: hidden;
+    transition: background 0.3s;
+  }
+  .cd-stat-item:hover { background: rgba(123,94,167,0.06); }
+  .cd-stat-item:last-child { border-right: none; }
+  .cd-stat-item::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, var(--violet), var(--cyan));
+    transform: scaleX(0); transition: transform 0.4s var(--ease);
+    transform-origin: left;
+  }
+  .cd-stat-item:hover::before { transform: scaleX(1); }
+  .cd-stat-val {
+    font-family: var(--font-display);
+    font-size: 28px; font-weight: 700; letter-spacing: -0.025em;
+    background: linear-gradient(135deg, var(--text) 0%, var(--violet3) 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+  .cd-stat-label { font-size: 12px; color: var(--text3); }
+
+  /* ══════════════ DIVIDER ══════════════ */
+  .cd-divider {
+    height: 1px; margin: 52px 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.07) 40%, rgba(255,255,255,0.07) 60%, transparent);
+  }
+
+  /* ══════════════ TABS ══════════════ */
+  .cd-tabs {
+    display: flex; gap: 2px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 46px;
+    overflow-x: auto; scrollbar-width: none;
+  }
+  .cd-tabs::-webkit-scrollbar { display: none; }
+  .cd-tab {
+    display: flex; align-items: center; gap: 7px;
+    padding: 13px 22px;
+    font-size: 13px; font-weight: 600; letter-spacing: 0.02em;
+    color: var(--text3);
+    cursor: pointer; border: none; background: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: all 0.25s var(--ease2);
+    white-space: nowrap; font-family: var(--font-body);
+  }
+  .cd-tab:hover { color: var(--text2); }
+  .cd-tab.active { color: var(--violet3); border-bottom-color: var(--violet3); }
+  .cd-tab-count {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 20px; height: 18px; padding: 0 5px;
+    border-radius: 100px; background: rgba(123,94,167,0.2);
+    font-size: 10px; font-weight: 700; color: var(--violet3);
+  }
+
+  /* ══════════════ OVERVIEW ══════════════ */
+  .cd-section-label {
+    display: inline-flex; align-items: center; gap: 10px;
+    font-size: 11px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--violet3); margin-bottom: 22px;
+  }
+  .cd-section-label::after {
+    content: '';
+    display: block; width: 40px; height: 1px;
+    background: linear-gradient(90deg, var(--violet3), transparent);
+  }
+
+  .cd-what-learn {
+    background: rgba(123,94,167,0.07);
+    border: 1px solid rgba(123,94,167,0.2);
+    border-radius: 20px; padding: 30px 34px;
+    margin-bottom: 38px; position: relative; overflow: hidden;
+  }
+  .cd-what-learn::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(157,127,212,0.6), transparent);
+  }
+  .cd-what-learn h3 {
+    font-family: var(--font-display);
+    font-size: 19px; font-weight: 700; margin-bottom: 22px; letter-spacing: -0.01em;
+  }
+  .cd-learn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .cd-learn-item {
+    display: flex; align-items: flex-start; gap: 11px;
+    font-size: 13px; color: var(--text2); line-height: 1.58;
+  }
+  .cd-learn-check {
+    width: 20px; height: 20px; border-radius: 6px; flex-shrink: 0;
+    background: rgba(38,208,161,0.14); border: 1px solid rgba(38,208,161,0.3);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px; color: var(--teal); margin-top: 1px;
+  }
+
+  .cd-overview-body { font-size: 15px; color: var(--text2); line-height: 1.9; font-weight: 300; }
+  .cd-overview-body p { margin-bottom: 18px; }
+  .cd-overview-body p:last-child { margin-bottom: 0; }
+
+  /* ══════════════ CURRICULUM ACCORDION ══════════════ */
+  .cd-curriculum { display: flex; flex-direction: column; gap: 10px; }
+  .cd-section-card {
+    background: rgba(26,29,46,0.6);
+    border: 1px solid var(--border);
+    border-radius: 16px; overflow: hidden;
+    backdrop-filter: blur(12px);
+    transition: border-color 0.3s, box-shadow 0.3s;
+  }
+  .cd-section-card:hover { border-color: var(--border2); box-shadow: 0 8px 30px rgba(0,0,0,0.2); }
+  .cd-section-header {
+    display: flex; align-items: center; gap: 14px;
+    padding: 18px 22px; cursor: pointer; user-select: none;
+    transition: background 0.2s;
+  }
+  .cd-section-header:hover { background: rgba(255,255,255,0.02); }
+  .cd-section-num {
+    width: 32px; height: 32px; border-radius: 9px; flex-shrink: 0;
+    background: rgba(123,94,167,0.14);
+    border: 1px solid rgba(123,94,167,0.26);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 800; color: var(--violet3);
+    font-family: var(--font-display);
+  }
+  .cd-section-title-text {
+    flex: 1; font-size: 15px; font-weight: 700; color: var(--text);
+    font-family: var(--font-display); letter-spacing: -0.01em;
+  }
+  .cd-section-meta { display: flex; align-items: center; gap: 14px; font-size: 12px; color: var(--text3); }
+  .cd-chevron { font-size: 11px; color: var(--text3); transition: transform 0.35s var(--ease); }
+  .cd-chevron.open { transform: rotate(180deg); }
+  .cd-lessons {
+    border-top: 1px solid var(--border); overflow: hidden;
+    max-height: 0; transition: max-height 0.45s var(--ease);
+  }
+  .cd-lessons.open { max-height: 2000px; }
+  .cd-lesson {
+    display: flex; align-items: center; gap: 14px;
+    padding: 13px 22px 13px 68px;
+    border-bottom: 1px solid rgba(255,255,255,0.028);
+    transition: background 0.2s; cursor: pointer;
+  }
+  .cd-lesson:last-child { border-bottom: none; }
+  .cd-lesson:hover { background: rgba(255,255,255,0.025); }
+  .cd-lesson-icon {
+    width: 28px; height: 28px; border-radius: 8px; flex-shrink: 0;
+    background: rgba(79,195,247,0.1); border: 1px solid rgba(79,195,247,0.22);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; color: var(--cyan);
+  }
+  .cd-lesson-name { flex: 1; font-size: 13px; color: var(--text2); font-weight: 400; }
+  .cd-lesson-dur { font-size: 11px; color: var(--text3); white-space: nowrap; }
+  .cd-lesson-free {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--teal); padding: 3px 10px; border-radius: 100px;
+    background: rgba(38,208,161,0.1); border: 1px solid rgba(38,208,161,0.25);
+    white-space: nowrap;
+  }
+
+  /* ── Curriculum summary bar ── */
+  .cd-curr-summary {
+    display: flex; align-items: center; gap: 20px;
+    padding: 14px 20px; margin-bottom: 22px;
+    background: rgba(255,255,255,0.02);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    font-size: 13px; color: var(--text2);
+  }
+  .cd-curr-summary strong { color: var(--text); font-weight: 700; }
+  .cd-curr-sep { color: var(--border2); }
+
+  /* ══════════════ REQUIREMENTS ══════════════ */
+  .cd-reqs { display: flex; flex-direction: column; gap: 12px; }
+  .cd-req {
+    display: flex; align-items: flex-start; gap: 13px;
+    font-size: 14px; color: var(--text2); line-height: 1.62;
+    padding: 14px 18px;
+    background: rgba(255,255,255,0.018);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    transition: border-color 0.25s, background 0.25s;
+  }
+  .cd-req:hover { border-color: var(--border2); background: rgba(255,255,255,0.03); }
+  .cd-req-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--violet3); box-shadow: 0 0 8px var(--violet);
+    flex-shrink: 0; margin-top: 8px;
+  }
+
+  /* ══════════════ SUCCESS / ERROR ══════════════ */
+  .cd-success {
+    background: rgba(38,208,161,0.07);
+    border: 1px solid rgba(38,208,161,0.25);
+    border-radius: 14px; padding: 18px;
+    font-size: 13px; color: var(--teal); font-weight: 600;
+    text-align: center; margin-top: 10px;
+  }
+  .cd-error {
+    background: rgba(240,98,146,0.07);
+    border: 1px solid rgba(240,98,146,0.25);
+    border-radius: 12px; padding: 12px 16px;
+    font-size: 13px; color: var(--rose); margin-top: 12px;
+  }
+
+  /* ══════════════ SKELETON ══════════════ */
+  .cd-skeleton {
+    background: linear-gradient(90deg, var(--surface) 25%, var(--surface2) 50%, var(--surface) 75%);
+    background-size: 200% 100%;
+    animation: cdSkel 1.8s ease-in-out infinite;
+    border-radius: 10px;
+  }
+  @keyframes cdSkel { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+  /* ══════════════ ENTRANCE ══════════════ */
+  .cd-fade { opacity: 0; transform: translateY(22px); animation: cdFadeUp 0.75s var(--ease) forwards; }
+  .cd-fade.d1{animation-delay:0.04s} .cd-fade.d2{animation-delay:0.14s}
+  .cd-fade.d3{animation-delay:0.24s} .cd-fade.d4{animation-delay:0.34s}
+  .cd-fade.d5{animation-delay:0.44s}
+  @keyframes cdFadeUp { to { opacity: 1; transform: translateY(0) } }
+
+  /* ══════════════ RESPONSIVE ══════════════ */
+  @media (max-width: 900px) {
+    .cd-hero { grid-template-columns: 1fr; gap: 40px; }
+    .cd-sidebar-wrap { position: static; }
+    .cd-learn-grid { grid-template-columns: 1fr; }
+    .cd-stats-strip { border-radius: 16px; }
+    .cd-stat-item { border-right: none; border-bottom: 1px solid var(--border); }
+    .cd-stat-item:last-child { border-bottom: none; }
+  }
+  @media (max-width: 580px) {
+    .cd-container { padding: 0 16px; }
+    .cd-title { font-size: clamp(28px, 8vw, 42px); }
+    .cd-what-learn { padding: 22px 20px; }
+    .cd-enroll-card { padding: 22px; }
+    .cd-social-strip { flex-wrap: wrap; gap: 12px; }
+    .cd-social-divider { display: none; }
+  }
+`;
+
+/* ─── CAT MAP ─────────────────────────────────────────────────────────────────── */
+const CAT_MAP = {
+  aws:                  { label: 'AWS Cloud',     icon: '☁️',  color: '#ff9900', glow: 'rgba(255,153,0,0.2)' },
+  azure:                { label: 'Azure',         icon: '🔷',  color: '#0ea5e9', glow: 'rgba(14,165,233,0.2)' },
+  cybersecurity:        { label: 'Cybersecurity', icon: '🛡️',  color: '#f06292', glow: 'rgba(240,98,146,0.2)' },
+  soc:                  { label: 'SOC Ops',       icon: '🔍',  color: '#26d0a1', glow: 'rgba(38,208,161,0.2)' },
+  'pentesting-web':     { label: 'Web Pentest',   icon: '🕸️',  color: '#ffca28', glow: 'rgba(255,202,40,0.2)' },
+  'pentesting-network': { label: 'Net Pentest',   icon: '🌐',  color: '#ff8a65', glow: 'rgba(255,138,101,0.2)' },
+  'pentesting-api':     { label: 'API Pentest',   icon: '⚡',  color: '#c4a8ff', glow: 'rgba(196,168,255,0.2)' },
+  networking:           { label: 'Networking',    icon: '📡',  color: '#4fc3f7', glow: 'rgba(79,195,247,0.2)' },
+};
+
+/* ─── CURRICULUM ACCORDION ───────────────────────────────────────────────────── */
+function CurriculumSection({ section, index }) {
+  const [open, setOpen] = useState(index === 0);
+  const lessons = section.lessons || [];
+  return (
+    <div className="cd-section-card">
+      <div className="cd-section-header" onClick={() => setOpen(o => !o)}>
+        <div className="cd-section-num">{String(index + 1).padStart(2, '0')}</div>
+        <div className="cd-section-title-text">{section.title}</div>
+        <div className="cd-section-meta">
+          {lessons.length > 0 && (
+            <span>{lessons.length} lesson{lessons.length !== 1 ? 's' : ''}</span>
+          )}
+        </div>
+        <div className={`cd-chevron${open ? ' open' : ''}`}>▼</div>
+      </div>
+      <div className={`cd-lessons${open ? ' open' : ''}`}>
+        {lessons.map((lesson, li) => (
+          <div className="cd-lesson" key={lesson._id || li}>
+            <div className="cd-lesson-icon">▶</div>
+            <div className="cd-lesson-name">{lesson.title}</div>
+            {lesson.duration && <div className="cd-lesson-dur">{lesson.duration}</div>}
+            {lesson.isFree && <span className="cd-lesson-free">Free</span>}
+          </div>
+        ))}
+        {lessons.length === 0 && (
+          <div className="cd-lesson" style={{ color: 'var(--text3)', fontSize: 13 }}>
+            <div className="cd-lesson-icon">📋</div>
+            <div className="cd-lesson-name">Content coming soon</div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ─── MAIN COMPONENT ─────────────────────────────────────────────────────────── */
+export default function CourseDetail() {
+  const { slug } = useParams();
+  const navigate = useNavigate();
+
+  const [course, setCourse]               = useState(null);
+  const [loading, setLoading]             = useState(true);
+  const [activeTab, setActiveTab]         = useState('overview');
+  const [enrollLoading, setEnrollLoading] = useState(false);
+  const [enrollResult, setEnrollResult]   = useState(null);
+  const [enrollError, setEnrollError]     = useState('');
+
+  /* Inject global styles once */
+  useEffect(() => {
+    if (!document.getElementById('pragni-cd-v2-styles')) {
+      const el = document.createElement('style');
+      el.id = 'pragni-cd-v2-styles';
+      el.textContent = STYLES;
+      document.head.appendChild(el);
+    }
+  }, []);
+
+  /* Fetch course — unchanged API logic */
+  useEffect(() => {
+    setLoading(true);
+    getCourseBySlug(slug)
+      .then(r => setCourse(r.data.course))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [slug]);
+
+  /* Enroll — unchanged API logic */
+  const handleEnroll = async () => {
+    setEnrollLoading(true);
+    setEnrollError('');
+    try {
+      const r = await enrollCourse(course._id);
+      setEnrollResult(r.data);
+    } catch (err) {
+      setEnrollError(err.response?.data?.error || 'Something went wrong. Please try again.');
+    }
+    setEnrollLoading(false);
+  };
+
+  /* Derived helpers */
+  const cat          = course ? (CAT_MAP[course.category] || {}) : {};
+  const sections     = course?.curriculum || course?.sections || [];
+  const totalLessons = sections.reduce((a, s) => a + (s.lessons?.length || 0), 0);
+  const requirements = course?.requirements || course?.prerequisites || [];
+  const whatYoullLearn = course?.whatYoullLearn || course?.outcomes || [];
+
+  /* ── LOADING SKELETON ── */
+  if (loading) return (
+    <div className="cd-root">
+      <div className="cd-aurora">
+        <div className="aurora-blob cd-ab1" />
+        <div className="aurora-blob cd-ab2" />
+        <div className="aurora-blob cd-ab3" />
+      </div>
+      <div className="cd-mesh" /><div className="cd-noise" />
+      <div className="cd-inner">
+        <div className="cd-container">
+          <div style={{ paddingTop: 32 }}>
+            <div className="cd-skeleton" style={{ width: 130, height: 38, borderRadius: 100, marginBottom: 44 }} />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 400px', gap: 60 }}>
+              <div>
+                <div className="cd-skeleton" style={{ width: '38%', height: 26, borderRadius: 100, marginBottom: 22 }} />
+                <div className="cd-skeleton" style={{ width: '92%', height: 62, marginBottom: 12 }} />
+                <div className="cd-skeleton" style={{ width: '68%', height: 62, marginBottom: 26 }} />
+                <div className="cd-skeleton" style={{ width: '96%', height: 84, borderRadius: 14 }} />
+              </div>
+              <div>
+                <div className="cd-skeleton" style={{ width: '100%', aspectRatio: '16/9', borderRadius: 20, marginBottom: 18 }} />
+                <div className="cd-skeleton" style={{ width: '100%', height: 280, borderRadius: 22 }} />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  /* ── NOT FOUND ── */
+  if (!course) return (
+    <div className="cd-root">
+      <div className="cd-aurora">
+        <div className="aurora-blob cd-ab1" />
+        <div className="aurora-blob cd-ab2" />
+      </div>
+      <div className="cd-mesh" />
+      <div className="cd-inner" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '80vh' }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: 56, marginBottom: 18, opacity: 0.6 }}>🔍</div>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700, marginBottom: 10 }}>
+            Course not found
+          </div>
+          <div style={{ color: 'var(--text2)', marginBottom: 30, fontSize: 15, fontWeight: 300 }}>
+            This course may have been moved or doesn't exist.
+          </div>
+          <button
+            onClick={() => navigate('/courses')}
+            style={{
+              padding: '13px 30px', borderRadius: 100, border: 'none', cursor: 'pointer',
+              background: 'linear-gradient(135deg, var(--violet), var(--indigo))',
+              color: '#fff', fontWeight: 700, fontSize: 14, fontFamily: 'var(--font-body)',
+              boxShadow: '0 0 40px rgba(123,94,167,0.45)',
+            }}
+          >← Back to Courses</button>
+        </div>
+      </div>
+    </div>
+  );
+
+  /* ── FULL PAGE ── */
+  return (
+    <div className="cd-root">
+
+      {/* ── AURORA BACKGROUND ── */}
+      <div className="cd-aurora">
+        <div className="aurora-blob cd-ab1" />
+        <div className="aurora-blob cd-ab2" />
+        <div className="aurora-blob cd-ab3" />
+      </div>
+      <div className="cd-mesh" />
+      <div className="cd-noise" />
+
+      <div className="cd-inner">
+        <div className="cd-container">
+
+          {/* ── TOP BAR ── */}
+          <div className="cd-topbar cd-fade d1">
+            <button className="cd-back" onClick={() => navigate('/courses')}>
+              ← All Courses
+            </button>
+            <div className="cd-breadcrumb">
+              <Link to="/">Home</Link>
+              <span className="cd-breadcrumb-sep">/</span>
+              <Link to="/courses">Courses</Link>
+              <span className="cd-breadcrumb-sep">/</span>
+              <span style={{ color: 'var(--text2)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {course.title}
+              </span>
+            </div>
+          </div>
+
+          {/* ════════════ HERO GRID ════════════ */}
+          <div className="cd-hero">
+
+            {/* ── LEFT ── */}
+            <div>
+
+              {/* Category eyebrow */}
+              <div className="cd-fade d2">
+                <div
+                  className="cd-eyebrow"
+                  style={{
+                    color: cat.color || 'var(--violet3)',
+                    borderColor: `${cat.color || '#7b5ea7'}28`,
+                    background: `${cat.color || '#7b5ea7'}0e`,
+                  }}
+                >
+                  <span className="cd-eyebrow-dot" />
+                  {cat.icon} {cat.label || course.category}
+                </div>
+              </div>
+
+              {/* Title */}
+              <h1 className="cd-title cd-fade d2">
+                <span className="cd-title-grad">{course.title}</span>
+              </h1>
+
+              {/* Description */}
+              <p className="cd-desc cd-fade d3">{course.description}</p>
+
+              {/* Meta pills */}
+              <div className="cd-meta-row cd-fade d3">
+                {course.level && (
+                  <span className="cd-pill cd-pill-level">
+                    {course.level === 'beginner' ? '🌱' : course.level === 'intermediate' ? '🔥' : '⚡'}{' '}
+                    {course.level.charAt(0).toUpperCase() + course.level.slice(1)}
+                  </span>
+                )}
+                {course.price === 0
+                  ? <span className="cd-pill cd-pill-free">✦ Completely Free</span>
+                  : <span className="cd-pill" style={{ color: 'var(--text)', fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 15 }}>
+                      ₹{course.price}
+                    </span>
+                }
+                {totalLessons > 0 && (
+                  <span className="cd-pill">📹 {totalLessons} lesson{totalLessons !== 1 ? 's' : ''}</span>
+                )}
+                {sections.length > 0 && (
+                  <span className="cd-pill">📂 {sections.length} module{sections.length !== 1 ? 's' : ''}</span>
+                )}
+                {course.language && (
+                  <span className="cd-pill">🌐 {course.language}</span>
+                )}
+              </div>
+
+              {/* Social proof strip */}
+              <div className="cd-social-strip cd-fade d3">
+                <div className="cd-stars">
+                  {[1,2,3,4,5].map(s => (
+                    <span key={s} className={`cd-star${s === 5 ? ' half' : ''}`}>★</span>
+                  ))}
+                </div>
+                <span className="cd-rating-val">4.8</span>
+                <span className="cd-rating-count">(2,400+ learners)</span>
+                <div className="cd-social-divider" />
+                <div className="cd-learner-avatars">
+                  {['A','B','C','D'].map((l, i) => (
+                    <div
+                      key={i}
+                      className="cd-learner-av"
+                      style={{
+                        background: [
+                          'linear-gradient(135deg,#7b5ea7,#5c6bc0)',
+                          'linear-gradient(135deg,#26d0a1,#0ea5e9)',
+                          'linear-gradient(135deg,#f06292,#7b5ea7)',
+                          'linear-gradient(135deg,#ffca28,#ff8a65)',
+                        ][i]
+                      }}
+                    >{l}</div>
+                  ))}
+                </div>
+                <span className="cd-learner-count">+2.4k enrolled</span>
+              </div>
+
+              {/* Trainer */}
+              {course.trainer && (
+                <div className="cd-fade d4">
+                  <div className="cd-trainer-row">
+                    {course.trainer.photo
+                      ? <img className="cd-trainer-avatar" src={course.trainer.photo} alt={course.trainer.name} />
+                      : (
+                        <div className="cd-trainer-avatar-ph">
+                          {(course.trainer.name || 'P')[0]}
+                        </div>
+                      )
+                    }
+                    <div className="cd-trainer-info">
+                      <div className="cd-trainer-name">{course.trainer.name || 'Pragni'}</div>
+                      <div className="cd-trainer-role">{course.trainer.role || 'Instructor'}</div>
+                    </div>
+                    <span className="cd-trainer-badge">Instructor</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* ── RIGHT: sticky sidebar ── */}
+            <div className="cd-sidebar-wrap cd-fade d3">
+
+              {/* Thumbnail with play button */}
+              <div className="cd-thumb">
+                {course.thumbnail
+                  ? <img src={course.thumbnail} alt={course.title} />
+                  : <div className="cd-thumb-ph">{cat.icon || '📚'}</div>
+                }
+                <div className="cd-play-overlay">
+                  <div className="cd-play-circle">
+                    <div className="cd-play-icon" />
+                  </div>
+                  <div className="cd-preview-label">Preview Course</div>
+                </div>
+              </div>
+
+              {/* Enroll card */}
+              <div className="cd-enroll-card">
+
+                {/* Price */}
+                {course.price === 0 ? (
+                  <>
+                    <div className="cd-price-free-badge">
+                      <span className="fb-dot" /> Free Forever
+                    </div>
+                    <div className="cd-price-sub">No credit card required · Start instantly</div>
+                  </>
+                ) : (
+                  <>
+                    <div className="cd-price-row">
+                      <div className="cd-price-main">₹{course.price}</div>
+                    </div>
+                    <div className="cd-price-sub">One-time payment · Lifetime access</div>
+                  </>
+                )}
+
+                {/* Urgency strip (static, decorative) */}
+                {course.price === 0 && (
+                  <div className="cd-urgency">
+                    <span className="cd-urgency-dot" />
+                    2 new videos added this week
+                  </div>
+                )}
+
+                {/* Enroll / success */}
+                {enrollResult ? (
+                  <div className="cd-success">🎉 You're enrolled! Start learning now.</div>
+                ) : (
+                  <>
+                    <button
+                      className={`cd-btn-enroll${course.price === 0 ? ' cd-btn-free' : ''}`}
+                      onClick={handleEnroll}
+                      disabled={enrollLoading}
+                    >
+                      {enrollLoading
+                        ? 'Enrolling...'
+                        : course.price === 0 ? '✦ Start Learning Free →' : 'Enroll Now →'
+                      }
+                    </button>
+                    {enrollError && <div className="cd-error">⚠️ {enrollError}</div>}
+                  </>
+                )}
+
+                <button className="cd-btn-share">
+                  ↗ Share this Course
+                </button>
+
+                {/* Perks list */}
+                <div className="cd-enroll-perks">
+                  {[
+                    ['📱', 'Access on all devices'],
+                    ['♾️', 'Lifetime access to all content'],
+                    ['🏆', 'Certificate on completion'],
+                    ['💬', 'Community & peer support'],
+                    ['⚡', 'Self-paced — go at your speed'],
+                  ].map(([icon, text]) => (
+                    <div className="cd-perk" key={text}>
+                      <div className="cd-perk-icon">{icon}</div>
+                      {text}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          {/* ════════════ STATS STRIP ════════════ */}
+          {(totalLessons > 0 || sections.length > 0 || course.level || course.language) && (
+            <div className="cd-stats-strip cd-fade d5">
+              {totalLessons > 0 && (
+                <div className="cd-stat-item">
+                  <div className="cd-stat-val">{totalLessons}</div>
+                  <div className="cd-stat-label">Total Lessons</div>
+                </div>
+              )}
+              {sections.length > 0 && (
+                <div className="cd-stat-item">
+                  <div className="cd-stat-val">{sections.length}</div>
+                  <div className="cd-stat-label">Modules</div>
+                </div>
+              )}
+              {course.level && (
+                <div className="cd-stat-item">
+                  <div className="cd-stat-val" style={{ textTransform: 'capitalize' }}>{course.level}</div>
+                  <div className="cd-stat-label">Skill Level</div>
+                </div>
+              )}
+              <div className="cd-stat-item">
+                <div className="cd-stat-val">4.8★</div>
+                <div className="cd-stat-label">Avg. Rating</div>
+              </div>
+              {course.price === 0 && (
+                <div className="cd-stat-item">
+                  <div className="cd-stat-val">₹0</div>
+                  <div className="cd-stat-label">Cost</div>
+                </div>
+              )}
+              {course.language && (
+                <div className="cd-stat-item">
+                  <div className="cd-stat-val">{course.language}</div>
+                  <div className="cd-stat-label">Language</div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ════════════ TABS ════════════ */}
+          <div className="cd-tabs">
+            {[
+              { key: 'overview',     label: 'Overview',     icon: '📋' },
+              { key: 'curriculum',   label: 'Curriculum',   icon: '📂', count: sections.length },
+              { key: 'requirements', label: 'Requirements', icon: '✅' },
+            ].map(tab => (
+              <button
+                key={tab.key}
+                className={`cd-tab${activeTab === tab.key ? ' active' : ''}`}
+                onClick={() => setActiveTab(tab.key)}
+              >
+                {tab.icon} {tab.label}
+                {tab.count > 0 && <span className="cd-tab-count">{tab.count}</span>}
+              </button>
+            ))}
+          </div>
+
+          {/* ════════════ TAB PANELS ════════════ */}
+          <div style={{ minHeight: 300 }}>
+
+            {/* ── OVERVIEW ── */}
+            {activeTab === 'overview' && (
+              <div>
+                {whatYoullLearn.length > 0 && (
+                  <div className="cd-what-learn">
+                    <h3>What you'll learn</h3>
+                    <div className="cd-learn-grid">
+                      {whatYoullLearn.map((item, i) => (
+                        <div className="cd-learn-item" key={i}>
+                          <div className="cd-learn-check">✓</div>
+                          <span>{item}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {course.longDescription && (
+                  <div className="cd-overview-body">
+                    {course.longDescription.split('\n\n').map((para, i) => (
+                      <p key={i}>{para}</p>
+                    ))}
+                  </div>
+                )}
+
+                {!course.longDescription && !whatYoullLearn.length && (
+                  <div style={{ color: 'var(--text2)', fontSize: 15, lineHeight: 1.85, fontWeight: 300 }}>
+                    {course.description}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── CURRICULUM ── */}
+            {activeTab === 'curriculum' && (
+              <div>
+                <div className="cd-section-label">Course Content</div>
+
+                {/* Summary bar */}
+                {(sections.length > 0 || totalLessons > 0) && (
+                  <div className="cd-curr-summary">
+                    <span><strong>{sections.length}</strong> section{sections.length !== 1 ? 's' : ''}</span>
+                    <span className="cd-curr-sep">·</span>
+                    <span><strong>{totalLessons}</strong> lesson{totalLessons !== 1 ? 's' : ''}</span>
+                  </div>
+                )}
+
+                {sections.length > 0 ? (
+                  <div className="cd-curriculum">
+                    {sections.map((section, i) => (
+                      <CurriculumSection key={section._id || i} section={section} index={i} />
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{
+                    textAlign: 'center', padding: '60px 24px',
+                    border: '1px dashed var(--border2)', borderRadius: 18,
+                    color: 'var(--text3)'
+                  }}>
+                    <div style={{ fontSize: 42, marginBottom: 14, opacity: 0.5 }}>📂</div>
+                    <p style={{ fontSize: 15, fontWeight: 300 }}>
+                      Curriculum will be added soon. Check back later!
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── REQUIREMENTS ── */}
+            {activeTab === 'requirements' && (
+              <div>
+                <div className="cd-section-label">Prerequisites</div>
+                {requirements.length > 0 ? (
+                  <div className="cd-reqs">
+                    {requirements.map((req, i) => (
+                      <div className="cd-req" key={i}>
+                        <div className="cd-req-dot" />
+                        <span>{req}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: 16,
+                    padding: '22px 28px',
+                    background: 'rgba(38,208,161,0.06)',
+                    border: '1px solid rgba(38,208,161,0.22)',
+                    borderRadius: 14,
+                    color: 'var(--teal)', fontSize: 14, fontWeight: 500
+                  }}>
+                    <span style={{ fontSize: 26 }}>✅</span>
+                    No specific prerequisites — this course is open to everyone!
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div style={{ height: 90 }} />
+        </div>
+      </div>
+    </div>
+  );
+}
